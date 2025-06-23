@@ -5,12 +5,12 @@ extends Node
 func initialize(data: Dictionary) -> void:
 	var mesh_instance = MeshInstance3D.new()
 	var material = StandardMaterial3D.new()
-	
+
 	# Set color from the hex string in the JSON
 	if data.has("color"):
 		# Godot's Color constructor can parse HTML hex strings
 		material.albedo_color = Color(data["color"])
-	
+
 	# Set shape based on the string in the JSON
 	if data.has("shape"):
 		var shape_name = data["shape"]
@@ -28,6 +28,6 @@ func initialize(data: Dictionary) -> void:
 	else:
 		# Default to a box if shape is not specified
 		mesh_instance.mesh = BoxMesh.new()
-	
+
 	mesh_instance.set_surface_material(0, material)
 	add_child(mesh_instance)
