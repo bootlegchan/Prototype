@@ -1,38 +1,75 @@
 extends Node3D
 
-var guard_instance_id: String
+var mimic_instance_id: String
 
 func _ready() -> void:
-	print("Main scene ready. Testing staging and unstaging...")
+	print("Main scene ready. Testing dynamic component modification...")
 	call_deferred("run_test")
 
+
 func run_test() -> void:
-	# --- Phase 1: Spawn the guard ---
-	print("\n--- Phase 1: Spawning Guard ---")
-	guard_instance_id = EntityManager.request_new_entity("characters/town_guard", Vector3.ZERO)
+	# --- Phase 1: Spawn a normal barrel ---
+	print("\n--- Phase 1: Spawning Barrel ---")
+	mimic_instance_id = EntityManager.request_new_entity("scenery/props/barrel", Vector3.ZERO)
 	
-	# Create a timer that will wait for 30 real seconds (5 in-game hours)
-	var timer = get_tree().create_timer(30.0)
-	# When the timer finishes, it will call the _on_despawn_timer_timeout function.
+	# Wait a frame to ensure the barrel is fully in the tree before modifying it.
+	call_deferred("transform_barrel_into_mimic")
+
+
+func transform_barrel_into_mimic() -> void:
+	# --- Phase 2: Dynamically turn it into a mimic ---
+	print("\n--- Phase 2: Transforming Barrel into a Mimic ---")
+	
+	# Add a StateComponent so it can have states.
+	EntityManager.add_component_to_entity(mimic_instance_id, "StateComponent", {"initial_state": "common/sleeping"})
+	
+	# Add a hostile tag.
+	# Note: This currently overwrites existing tags. A more robust TagComponent
+	# would have an `add_tags` method. For this test, it's fine.
+	EntityManager.add_component_to_entity(mimic_instance_id, "TagComponent", {"tags": ["roles/hostile"]})
+	
+	# Wait a moment, then unstage it.
+	var timer = get_tree().create_timer(2.0)
 	timer.timeout.connect(_on_despawn_timer_timeout)
-	
-	print("Guard spawned. Waiting 30 seconds (5 game hours) before unstaging...")
 
 
 func _on_despawn_timer_timeout() -> void:
-	# --- Phase 2: Unstage the guard ---
-	print("\n--- Phase 2: Unstaging Guard ---")
-	EntityManager.unstage_entity(guard_instance_id)
+	# --- Phase 3: Unstage the mimic barrel ---
+	print("\n--- Phase 3: Unstaging Mimic Barrel ---")
+	EntityManager.unstage_entity(mimic_instance_id)
 	
-	# Wait 2 seconds before bringing them back.
+	# Wait a moment, then bring it back.
 	var timer = get_tree().create_timer(2.0)
 	timer.timeout.connect(_on_respawn_timer_timeout)
 
 
 func _on_respawn_timer_timeout() -> void:
-	# --- Phase 3: Stage the guard again ---
-	print("\n--- Phase 3: Staging Guard Again ---")
-	EntityManager.stage_entity(guard_instance_id)
+	# --- Phase 4: Stage the mimic barrel again ---
+	print("\n--- Phase 4: Staging Mimic Barrel Again ---")
+	EntityManager.stage_entity(mimic_instance_id)
 	
-	print("\n--- Test Complete ---")
-	print("Check the log to see that the guard's state was saved and that they respawned.")
+	# Verify it came back with its new components.
+	call_deferred("verify_mimic_state")
+
+
+func verify_mimic_state() -> void:
+	var mimic_node = EntityManager.get_node_from_instance_id(mimic_instance_id)
+	if not is_instance_valid(mimic_node):
+		print("VERIFICATION FAILED: Mimic node is not valid.")
+		return
+		
+	var logic_node = mimic_node.get_node("EntityLogic")
+	if logic_node:
+		var state_comp = logic_node.get_component("StateComponent")
+		var tag_comp = logic_node.get_component("TagComponent")
+		
+		if state_comp and tag_comp:
+			print("\nVERIFICATION PASSED: Restaged entity has both StateComponent and TagComponent.")
+			if tag_comp.has_tag("roles/hostile"):
+				print("VERIFICATION PASSED: Restaged entity correctly has the 'hostile' tag.")
+			else:
+				print("VERIFICATION FAILED: Restaged entity is missing the 'hostile' tag.")
+		else:
+			print("VERIFICATION FAILED: Restaged entity is missing dynamically added components.")
+	
+	print("\n--- Dynamic Modification Test Complete ---")
