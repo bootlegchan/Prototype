@@ -1,0 +1,5 @@
+{
+	"description": "Walking a set route and looking for trouble.",
+	"interruptible": true,
+	"movement_speed_modifier": 1.0
+}

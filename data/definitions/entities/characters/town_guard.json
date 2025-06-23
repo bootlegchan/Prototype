@@ -13,9 +13,7 @@
 			]
 		},
 		"StateComponent": {
-			"mood": "neutral",
-			"activity": "patrolling",
-			"stamina": 100
+			"initial_state": "guard/patrolling"
 		}
 	}
 }

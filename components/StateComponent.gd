@@ -1,33 +1,45 @@
 class_name StateComponent
 extends Node
 
-# A dictionary to hold any simulation-relevant data.
-# Examples: "mood": "happy", "hunger": 50, "energy": 100
-var _states: Dictionary = {}
+var _state_stack: Array[Dictionary] = [] # Now stores the full definition, not just the ID.
 var _entity_name: String = "Unnamed"
 
-# This function is now called with the entity's name and its state data.
-func initialize(entity_name: String, data: Dictionary) -> void:
+func initialize(entity_name: String, initial_stack: Array[Dictionary]) -> void:
 	_entity_name = entity_name
-	_states = data.duplicate() # Make a copy to avoid shared references.
-	print("StateComponent initialized on entity '%s' with states: %s" % [_entity_name, _states])
+	_state_stack = initial_stack
+	
+	if not _state_stack.is_empty():
+		print("Entity '%s' initialized in state: '%s'" % [_entity_name, get_current_state_id()])
+	else:
+		print("Entity '%s' initialized with no state." % _entity_name)
 
+# --- Public API for State Machine ---
 
-# --- Public API for other systems ---
+func push_state(state_id: String) -> void:
+	var state_data = StateRegistry.get_state_definition(state_id)
+	if not state_data.is_empty():
+		# --- THIS IS THE FIX ---
+		var new_state_data = state_data.duplicate()
+		new_state_data["id"] = state_id # Inject the ID
+		_state_stack.push_back(new_state_data)
+		print("Entity '%s' entered state: '%s'" % [_entity_name, state_id])
+	else:
+		push_warning("Attempted to push undefined state '%s'" % state_id)
 
-func set_state(key: String, value) -> void:
-	var old_value = _states.get(key)
-	_states[key] = value
-	print("State changed for entity '%s': '%s' changed from %s to %s" % [_entity_name, key, str(old_value), str(value)])
+func pop_state() -> void:
+	if _state_stack.size() > 1:
+		var old_state = _state_stack.pop_back()
+		print("Entity '%s' exited state: '%s'" % [_entity_name, old_state.get("id", "unknown")])
+	else:
+		push_warning("Attempted to pop the base state for '%s'." % _entity_name)
 
+func get_current_state_data() -> Dictionary:
+	if _state_stack.is_empty():
+		return {}
+	return _state_stack.back()
 
-func get_state(key: String, default = null):
-	return _states.get(key, default)
-
-
-func has_state(key: String) -> bool:
-	return _states.has(key)
-
-
-func get_all_states() -> Dictionary:
-	return _states.duplicate(true)
+func get_current_state_id() -> String:
+	if _state_stack.is_empty():
+		return ""
+	# We now get the ID that was injected.
+	return get_current_state_data().get("id", "unknown")

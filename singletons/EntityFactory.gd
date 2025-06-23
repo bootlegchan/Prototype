@@ -62,71 +62,76 @@ func spawn_entity(definition_id: String, position: Vector3 = Vector3.ZERO) -> No
 # --- Private Helper Functions ---
 func _add_component_to_entity(entity_logic_node: BaseEntity, component_name: String, entity_definition: Dictionary) -> void:
 	if not _component_map.has(component_name):
-		printerr("Component '%s' is not registered. Check component script and file name." % component_name)
+		printerr("Component '%s' is not registered." % component_name)
 		return
 
 	var component_node = Node.new()
 	component_node.name = component_name
-	
 	var component_script: GDScript = _component_map[component_name]
 	component_node.set_script(component_script)
 	
-	# Special handling for different component initialization signatures
+	var entity_name = entity_definition.get("name", "UnnamedEntity")
+
 	if component_node.has_method("initialize"):
-		if component_name == "StateComponent":
-			# StateComponent needs the entity name and its data block
-			var entity_name = entity_definition.get("name", "UnnamedEntity")
-			var state_data = entity_definition["components"].get(component_name, {})
-			component_node.initialize(entity_name, state_data)
-		elif component_name == "TagComponent":
-			# TagComponent needs resolved tag definitions
-			var tag_registry = get_node_or_null("/root/TagRegistry")
-			if not tag_registry:
-				printerr("FATAL: TagRegistry singleton not found! Cannot initialize TagComponent.")
-				return
-			
-			var resolved_tags = {}
-			var tags_to_resolve = entity_definition["components"]["TagComponent"].get("tags", [])
-			for tag_id in tags_to_resolve:
-				if tag_registry.is_tag_defined(tag_id):
-					resolved_tags[tag_id] = tag_registry.get_tag_definition(tag_id)
+		var data_for_init
+		
+		match component_name:
+			"StateComponent":
+				var initial_stack: Array[Dictionary] = []
+				var state_comp_data = entity_definition["components"].get(component_name, {})
+				var initial_state_id = state_comp_data.get("initial_state")
+				
+				if initial_state_id and StateRegistry.is_state_defined(initial_state_id):
+					var state_def = StateRegistry.get_state_definition(initial_state_id).duplicate()
+					# --- THIS IS THE FIX ---
+					state_def["id"] = initial_state_id # Inject the ID for later reference
+					initial_stack.push_back(state_def)
 				else:
-					push_warning("Undefined tag '%s' requested by entity '%s'." % [tag_id, entity_definition.get("name")])
-			component_node.initialize(resolved_tags)
-		else:
-			# All other components get their specific data block
-			var component_data = entity_definition["components"].get(component_name, {})
-			component_node.initialize(component_data)
+					push_warning("Entity '%s' has no valid initial state." % entity_name)
+
+				data_for_init = [entity_name, initial_stack]
+			
+			"TagComponent":
+				var resolved_tags: Dictionary = {}
+				var tag_comp_data = entity_definition["components"].get(component_name, {})
+				var tags_to_resolve = tag_comp_data.get("tags", [])
+				
+				for tag_id in tags_to_resolve:
+					if TagRegistry.is_tag_defined(tag_id):
+						resolved_tags[tag_id] = TagRegistry.get_tag_definition(tag_id)
+					else:
+						push_warning("Undefined tag '%s' for entity '%s'." % [tag_id, entity_name])
+				
+				data_for_init = [resolved_tags]
+			
+			_: # Default handler for all other components
+				data_for_init = [entity_definition["components"].get(component_name, {})]
+		
+		Callable(component_node, "initialize").callv(data_for_init)
 
 	entity_logic_node.add_component(component_name, component_node)
 
 
-# Unchanged helper functions below...
 func _recursive_load_definitions(path: String) -> void:
 	var dir = DirAccess.open(path)
 	if not dir:
 		printerr("Could not open definitions directory: ", path)
 		return
-
 	dir.list_dir_begin()
 	var item_name = dir.get_next()
 	while item_name != "":
 		if item_name == "." or item_name == "..":
 			item_name = dir.get_next()
 			continue
-
 		var full_path = "%s/%s" % [path.trim_suffix("/"), item_name]
-		
 		if dir.current_is_dir():
 			_recursive_load_definitions(full_path)
 		elif item_name.ends_with(".json"):
 			var relative_path = full_path.replace(DEFINITION_PATH, "")
 			var definition_id = relative_path.trim_suffix(".json")
-			
 			var file = FileAccess.open(full_path, FileAccess.READ)
 			var json_data = JSON.parse_string(file.get_as_text())
 			_entity_definitions[definition_id] = json_data
-		
 		item_name = dir.get_next()
 
 
@@ -135,7 +140,6 @@ func _register_all_components() -> void:
 	if not dir:
 		printerr("Components directory not found: ", COMPONENT_PATH)
 		return
-
 	dir.list_dir_begin()
 	var file_name = dir.get_next()
 	while file_name != "":
@@ -151,7 +155,6 @@ func _register_all_components() -> void:
 func _add_collision_shape_to_entity(physics_body: Node3D, shape_type: String) -> void:
 	var collision_shape_node = CollisionShape3D.new()
 	var shape_resource: Shape3D
-
 	match shape_type.to_lower():
 		"box":
 			shape_resource = BoxShape3D.new()
@@ -164,6 +167,5 @@ func _add_collision_shape_to_entity(physics_body: Node3D, shape_type: String) ->
 		_:
 			printerr("Cannot create collision shape. Unknown shape type: ", shape_type)
 			return
-			
 	collision_shape_node.shape = shape_resource
 	physics_body.add_child(collision_shape_node)

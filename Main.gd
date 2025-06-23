@@ -1,46 +1,36 @@
 extends Node3D
 
 func _ready() -> void:
-	print("Main scene ready. Spawning and testing state system...")
+	print("Main scene ready. Spawning and testing state machine...")
 	
-	if not EntityFactory:
-		printerr("EntityFactory not found!")
-		return
+	var guard = EntityFactory.spawn_entity("characters/town_guard")
+	call_deferred("test_guard_state_machine", guard)
 
-	var guard = EntityFactory.spawn_entity("characters/town_guard", Vector3(5, 0, 0))
-	
-	# We wait a frame to ensure the node is fully ready.
-	call_deferred("test_guard_state", guard)
-
-func test_guard_state(guard_node: Node3D) -> void:
-	if not is_instance_valid(guard_node):
-		print("Guard node is not valid.")
-		return
+func test_guard_state_machine(guard_node: Node3D) -> void:
+	if not is_instance_valid(guard_node): return
 	
 	var logic_node = guard_node.get_node_or_null("EntityLogic")
 	if logic_node:
 		var state_comp = logic_node.get_component("StateComponent")
 		if state_comp:
-			print("\n--- Found guard's StateComponent. Testing states. ---")
+			print("\n--- Testing Guard State Machine ---")
+			# 1. Check initial state
+			var initial_state_id = state_comp.get_current_state_id()
+			var initial_state_data = state_comp.get_current_state_data()
+			print("Guard's initial state is '%s', which is interruptible: %s" % [initial_state_id, initial_state_data.get("interruptible")])
+
+			# 2. Player talks to the guard
+			print("\nPlayer initiates conversation...")
+			state_comp.push_state("guard/chatting")
 			
-			# 1. Read the initial state
-			var initial_activity = state_comp.get_state("activity", "none")
-			print("Guard's initial activity is: '%s'" % initial_activity)
+			var new_state_id = state_comp.get_current_state_id()
+			var new_state_data = state_comp.get_current_state_data()
+			print("Guard is now in state '%s', which allows movement: %s" % [new_state_id, new_state_data.get("can_move", true)])
 			
-			var initial_mood = state_comp.get_state("mood", "unknown")
-			print("Guard's initial mood is: '%s'" % initial_mood)
+			# 3. Conversation ends
+			print("\nConversation ends, returning to previous state...")
+			state_comp.pop_state()
 			
-			# 2. Change the state
-			print("\nSomething happens... The player gives the guard a gift.")
-			state_comp.set_state("mood", "happy")
-			state_comp.set_state("activity", "chatting_with_player")
-			
-			# 3. Read the new state
-			var new_mood = state_comp.get_state("mood")
-			print("Guard's new mood is: '%s'" % new_mood)
-			
-			print("--- State test complete. ---\n")
-		else:
-			print("Could not find StateComponent on the guard.")
-	else:
-		print("Could not find EntityLogic node on the guard.")
+			var final_state_id = state_comp.get_current_state_id()
+			print("Guard has returned to state: '%s'" % final_state_id)
+			print("--- State Machine Test Complete ---\n")
