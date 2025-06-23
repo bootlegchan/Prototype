@@ -6,6 +6,7 @@ const COMPONENT_PATH = "res://components/"
 var _entity_definitions: Dictionary = {}
 var _component_map: Dictionary = {}
 
+
 func _ready() -> void:
 	_entity_definitions.clear()
 	_component_map.clear()
@@ -16,7 +17,8 @@ func _ready() -> void:
 	_register_all_components()
 
 
-func spawn_entity(definition_id: String, position: Vector3 = Vector3.ZERO) -> Node:
+# The main public function is now "create_entity_node". It builds and returns a node.
+func create_entity_node(definition_id: String, position: Vector3) -> Node:
 	if not _entity_definitions.has(definition_id):
 		printerr("Entity definition not found: '", definition_id, "'")
 		return null
@@ -30,7 +32,7 @@ func spawn_entity(definition_id: String, position: Vector3 = Vector3.ZERO) -> No
 		if is_instance_valid(physics_body): physics_body.free()
 		return null
 	
-	physics_body.name = definition.get("name", "UnnamedEntity")
+	# We set position here. Name will be set by the EntityManager.
 	physics_body.position = position
 	
 	var scale_vector = Vector3.ONE
@@ -48,9 +50,11 @@ func spawn_entity(definition_id: String, position: Vector3 = Vector3.ZERO) -> No
 		var shape_type_str = visual_data.get("shape", "box")
 		_add_collision_shape_to_entity(physics_body, shape_type_str)
 
+	# --- Two-Pass Component Creation ---
 	if definition.has("components"):
 		var components_to_add: Dictionary = definition["components"]
 		
+		# PASS 1: Create and add all component nodes.
 		for component_name in components_to_add:
 			if not _component_map.has(component_name):
 				printerr("Component '%s' is not registered." % component_name)
@@ -60,20 +64,20 @@ func spawn_entity(definition_id: String, position: Vector3 = Vector3.ZERO) -> No
 			component_node.set_script(_component_map[component_name])
 			entity_logic_node.add_component(component_name, component_node)
 
+		# PASS 2: Initialize all components.
 		for component_name in components_to_add:
 			var component_node = entity_logic_node.get_component(component_name)
 			if component_node and component_node.has_method("initialize"):
-				_initialize_component(component_node, component_name, definition)
+				# The entity's final name is not set yet, so we get it from the definition.
+				var entity_name_from_def = definition.get("name", "UnnamedEntity")
+				_initialize_component(component_node, component_name, definition, entity_name_from_def)
 
-	get_tree().current_scene.add_child(physics_body)
-	
-	print("Successfully spawned entity '%s' (ID: %s) of type '%s'." % [physics_body.name, definition_id, base_node_type])
+	print("Entity node created for definition '%s'." % definition_id)
+	# IMPORTANT: We return the fully built node, but DO NOT add it to the scene.
 	return physics_body
 
 
-# --- Private Helper Functions ---
-func _initialize_component(component_node: Node, component_name: String, entity_definition: Dictionary) -> void:
-	var entity_name = entity_definition.get("name", "UnnamedEntity")
+func _initialize_component(component_node: Node, component_name: String, entity_definition: Dictionary, entity_name: String) -> void:
 	var data_for_init
 	
 	match component_name:
@@ -92,7 +96,11 @@ func _initialize_component(component_node: Node, component_name: String, entity_
 					push_warning("Undefined tag '%s' for entity '%s'." % [tag_id, entity_name])
 			data_for_init = [resolved_tags]
 		
-		_:
+		"ItemComponent":
+			var component_data = entity_definition["components"].get(component_name, {})
+			data_for_init = [component_data]
+		
+		_: # Default handler for all other components
 			var component_data = entity_definition["components"].get(component_name, {})
 			data_for_init = [component_data]
 	
@@ -121,6 +129,7 @@ func _recursive_load_definitions(path: String) -> void:
 			_entity_definitions[definition_id] = json_data
 		item_name = dir.get_next()
 
+
 func _register_all_components() -> void:
 	var dir = DirAccess.open(COMPONENT_PATH)
 	if not dir:
@@ -136,6 +145,7 @@ func _register_all_components() -> void:
 				_component_map[component_name] = script
 		file_name = dir.get_next()
 	print("Registered %s components: " % _component_map.size(), _component_map.keys())
+
 
 func _add_collision_shape_to_entity(physics_body: Node3D, shape_type: String) -> void:
 	var collision_shape_node = CollisionShape3D.new()

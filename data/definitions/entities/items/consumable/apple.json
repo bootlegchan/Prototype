@@ -1,6 +1,21 @@
 {
-	"display_name": "Red Apple",
-	"description": "A crisp and juicy red apple.",
-	"stackable": true,
-	"max_stack_size": 20
+	"name": "Apple",
+	"base_node_type": "RigidBody3D",
+	"scale": { "x": 0.2, "y": 0.2, "z": 0.2 },
+	"components": {
+		"VisualComponent": {
+			"shape": "sphere",
+			"color": "FF0000"
+		},
+		"ItemComponent": {
+			"display_name": "Red Apple",
+			"description": "A crisp and juicy red apple.",
+			"stackable": true,
+			"max_stack_size": 20,
+			"quantity": 1
+		},
+		"TagComponent": {
+			"tags": ["properties/flammable"]
+		}
+	}
 }

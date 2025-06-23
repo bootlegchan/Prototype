@@ -1,65 +1,86 @@
 class_name InventoryComponent
 extends Node
 
-# An array of dictionaries, where each dictionary represents an item slot.
-# Example: { "item_id": "general/apple", "quantity": 5 }
-var items: Array[Dictionary] = []
+# This node will act as the container for the actual item entity nodes.
+var item_container: Node
 var _entity_name: String = "Unnamed"
 
 func initialize(entity_name: String, data: Dictionary) -> void:
 	_entity_name = entity_name
-	# We could potentially initialize with starting items from JSON here if needed.
+	
+	# Create a dedicated child node to hold the items.
+	item_container = Node.new()
+	item_container.name = "ItemContainer"
+	add_child(item_container)
+	
 	print("InventoryComponent initialized for '%s'." % _entity_name)
 
 
 # --- Public API ---
 
-func add_item(item_id: String, quantity: int = 1) -> bool:
-	if not ItemRegistry.is_item_defined(item_id):
-		push_warning("Attempted to add undefined item '%s' to '%s'." % [item_id, _entity_name])
-		return false
+func add_item_entity(item_entity: Node) -> void:
+	var logic_node = item_entity.get_node("EntityLogic")
+	if not logic_node: return
 	
-	var item_def = ItemRegistry.get_item_definition(item_id)
-	
-	# If the item is stackable, try to add to an existing stack first.
-	if item_def.get("stackable", false):
-		for slot in items:
-			if slot["item_id"] == item_id:
-				slot["quantity"] += quantity
-				print("Added %s %s(s) to existing stack in '%s' inventory. New total: %s" % [quantity, item_id, _entity_name, slot["quantity"]])
-				return true
-	
-	# If no existing stack, or not stackable, create a new slot.
-	var new_slot = {
-		"item_id": item_id,
-		"quantity": quantity
-	}
-	items.append(new_slot)
-	print("Added %s %s(s) as new item to '%s' inventory." % [quantity, item_id, _entity_name])
-	return true
+	var item_comp = logic_node.get_component("ItemComponent")
+	if not item_comp:
+		push_warning("Attempted to add a non-item entity to '%s' inventory." % _entity_name)
+		return
 
-
-func remove_item(item_id: String, quantity: int = 1) -> bool:
-	# Iterate backwards so we can safely remove items.
-	for i in range(items.size() - 1, -1, -1):
-		var slot = items[i]
-		if slot["item_id"] == item_id:
-			slot["quantity"] -= quantity
-			print("Removed %s %s(s) from '%s' inventory. Remaining: %s" % [quantity, item_id, _entity_name, slot["quantity"]])
+	if item_comp.stackable:
+		for existing_item in item_container.get_children():
+			var existing_logic_node = existing_item.get_node("EntityLogic")
+			if not existing_logic_node: continue
 			
-			# If the stack is empty, remove the slot entirely.
-			if slot["quantity"] <= 0:
-				items.remove_at(i)
-				print("Item slot '%s' is now empty and was removed from '%s'." % [item_id, _entity_name])
-			return true
-			
-	push_warning("Could not find item '%s' to remove from '%s'." % [item_id, _entity_name])
-	return false
+			var existing_item_comp = existing_logic_node.get_component("ItemComponent")
+			if existing_item_comp.display_name == item_comp.display_name:
+				existing_item_comp.quantity += item_comp.quantity
+				print("Merged %s into existing stack in '%s'. New total: %s" % [item_entity.name, _entity_name, existing_item_comp.quantity])
+				item_entity.queue_free()
+				return
+	
+	if item_entity.get_parent():
+		item_entity.get_parent().remove_child(item_entity)
+	
+	item_container.add_child(item_entity)
+	_set_item_in_inventory_state(item_entity, true)
+	
+	print("Added new item entity '%s' to '%s' inventory." % [item_entity.name, _entity_name])
 
 
-func get_item_count(item_id: String) -> int:
-	var total = 0
-	for slot in items:
-		if slot["item_id"] == item_id:
-			total += slot["quantity"]
-	return total
+func drop_item_entity(item_entity: Node, drop_position: Vector3) -> void:
+	if item_entity.get_parent() != item_container:
+		push_warning("Attempted to drop an item not in this inventory.")
+		return
+		
+	item_container.remove_child(item_entity)
+	get_tree().current_scene.add_child(item_entity)
+	
+	if item_entity is Node3D:
+		item_entity.global_position = drop_position
+		
+	_set_item_in_inventory_state(item_entity, false)
+	print("Dropped item '%s' from '%s' inventory into the world." % [item_entity.name, _entity_name])
+
+
+# Helper function to disable physics and visibility for items in an inventory.
+func _set_item_in_inventory_state(item_entity: Node, is_in_inventory: bool) -> void:
+	if item_entity is CollisionObject3D:
+		item_entity.set_process(!is_in_inventory)
+		item_entity.set_physics_process(!is_in_inventory)
+		
+		for child in item_entity.get_children():
+			if child is CollisionShape3D:
+				child.disabled = is_in_inventory
+				break
+		
+	var logic_node = item_entity.get_node_or_null("EntityLogic")
+	if logic_node:
+		var visual_comp = logic_node.get_component("VisualComponent")
+		if visual_comp:
+			# --- THIS IS THE FIX ---
+			# Find the actual MeshInstance3D child within the VisualComponent.
+			for child in visual_comp.get_children():
+				if child is MeshInstance3D:
+					child.visible = not is_in_inventory
+					break # Stop after finding the first one.
