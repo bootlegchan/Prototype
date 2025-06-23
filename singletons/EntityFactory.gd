@@ -71,31 +71,37 @@ func _add_component_to_entity(entity_logic_node: BaseEntity, component_name: Str
 	var component_script: GDScript = _component_map[component_name]
 	component_node.set_script(component_script)
 	
-	var component_data
-	
-	if component_name == "TagComponent":
-		var tag_registry = get_node_or_null("/root/TagRegistry")
-		if not tag_registry:
-			printerr("FATAL: TagRegistry singleton not found in the scene tree!")
-			return
-		
-		var resolved_tags = {}
-		var tags_to_resolve = entity_definition["components"]["TagComponent"].get("tags", [])
-		for tag_id in tags_to_resolve:
-			if tag_registry.is_tag_defined(tag_id):
-				resolved_tags[tag_id] = tag_registry.get_tag_definition(tag_id)
-			else:
-				push_warning("Undefined tag '%s' requested by entity '%s'." % [tag_id, entity_definition.get("name")])
-		component_data = resolved_tags
-	else:
-		component_data = entity_definition["components"][component_name]
-
+	# Special handling for different component initialization signatures
 	if component_node.has_method("initialize"):
-		component_node.initialize(component_data)
-	
+		if component_name == "StateComponent":
+			# StateComponent needs the entity name and its data block
+			var entity_name = entity_definition.get("name", "UnnamedEntity")
+			var state_data = entity_definition["components"].get(component_name, {})
+			component_node.initialize(entity_name, state_data)
+		elif component_name == "TagComponent":
+			# TagComponent needs resolved tag definitions
+			var tag_registry = get_node_or_null("/root/TagRegistry")
+			if not tag_registry:
+				printerr("FATAL: TagRegistry singleton not found! Cannot initialize TagComponent.")
+				return
+			
+			var resolved_tags = {}
+			var tags_to_resolve = entity_definition["components"]["TagComponent"].get("tags", [])
+			for tag_id in tags_to_resolve:
+				if tag_registry.is_tag_defined(tag_id):
+					resolved_tags[tag_id] = tag_registry.get_tag_definition(tag_id)
+				else:
+					push_warning("Undefined tag '%s' requested by entity '%s'." % [tag_id, entity_definition.get("name")])
+			component_node.initialize(resolved_tags)
+		else:
+			# All other components get their specific data block
+			var component_data = entity_definition["components"].get(component_name, {})
+			component_node.initialize(component_data)
+
 	entity_logic_node.add_component(component_name, component_node)
 
 
+# Unchanged helper functions below...
 func _recursive_load_definitions(path: String) -> void:
 	var dir = DirAccess.open(path)
 	if not dir:
