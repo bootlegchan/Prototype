@@ -1,6 +1,6 @@
 extends Node
 
-const DEFINITION_PATH = "res://data/definitions/"
+const DEFINITION_PATH = "res://data/definitions/entities/" # <-- THIS LINE IS NOW CORRECT
 const COMPONENT_PATH = "res://components/"
 
 var _entity_definitions: Dictionary = {}
