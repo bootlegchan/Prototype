@@ -1,0 +1,14 @@
+{
+	"name": "Simple House",
+	"base_node_type": "StaticBody3D",
+	"scale": { "x": 10, "y": 6, "z": 8 },
+	"components": {
+		"VisualComponent": {
+			"shape": "box",
+			"color": "D2B48C"
+		},
+		"TagComponent": {
+			"tags": ["Building", "Scenery", "Obstacle"]
+		}
+	}
+}

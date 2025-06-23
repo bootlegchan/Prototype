@@ -6,11 +6,82 @@ const COMPONENT_PATH = "res://components/"
 var _entity_definitions: Dictionary = {}
 var _component_map: Dictionary = {}
 
-
 func _ready() -> void:
 	_load_all_definitions()
 	_register_all_components()
 
+func spawn_entity(definition_id: String, position: Vector3 = Vector3.ZERO) -> Node:
+	if not _entity_definitions.has(definition_id):
+		printerr("Entity definition not found: ", definition_id)
+		return null
+
+	var definition: Dictionary = _entity_definitions[definition_id]
+	
+	# 1. CREATE THE PHYSICS BODY (e.g., StaticBody3D, CharacterBody3D)
+	var base_node_type = definition.get("base_node_type", "Node3D")
+	var physics_body = ClassDB.instantiate(base_node_type)
+	if not physics_body is Node3D:
+		printerr("Failed to instantiate a valid Node3D for definition: ", definition_id)
+		if is_instance_valid(physics_body):
+			physics_body.free()
+		return null
+	
+	physics_body.name = definition.get("name", "UnnamedEntity")
+	physics_body.position = position
+	
+	var scale_vector = Vector3.ONE
+	if definition.has("scale"):
+		var scale_data: Dictionary = definition["scale"]
+		scale_vector = Vector3(
+			scale_data.get("x", 1.0),
+			scale_data.get("y", 1.0),
+			scale_data.get("z", 1.0)
+		)
+	physics_body.scale = scale_vector
+
+	# 2. CREATE AND ADD THE LOGIC/COMPONENT CONTAINER NODE
+	var entity_logic_node = BaseEntity.new()
+	entity_logic_node.name = "EntityLogic"
+	physics_body.add_child(entity_logic_node)
+
+	# 3. CREATE AND ADD A COLLISION SHAPE
+	if definition.has("components") and definition["components"].has("VisualComponent"):
+		var visual_data = definition["components"]["VisualComponent"]
+		var shape_type_str = visual_data.get("shape", "box")
+		_add_collision_shape_to_entity(physics_body, shape_type_str)
+
+	# 4. ADD COMPONENTS to the LOGIC NODE
+	if definition.has("components"):
+		var components_data: Dictionary = definition["components"]
+		for component_name in components_data:
+			_add_component_to_entity(entity_logic_node, component_name, components_data[component_name])
+
+	get_tree().current_scene.add_child(physics_body)
+	
+	print("Successfully spawned entity '%s' of type '%s'." % [physics_body.name, base_node_type])
+	return physics_body
+
+# --- Private Helper Functions ---
+
+func _add_collision_shape_to_entity(physics_body: Node3D, shape_type: String) -> void:
+	var collision_shape_node = CollisionShape3D.new()
+	var shape_resource: Shape3D
+
+	match shape_type.to_lower():
+		"box":
+			shape_resource = BoxShape3D.new()
+		"sphere":
+			shape_resource = SphereShape3D.new()
+		"cylinder":
+			shape_resource = CylinderShape3D.new()
+		"capsule":
+			shape_resource = CapsuleShape3D.new()
+		_:
+			printerr("Cannot create collision shape. Unknown shape type: ", shape_type)
+			return
+			
+	collision_shape_node.shape = shape_resource
+	physics_body.add_child(collision_shape_node)
 
 func _load_all_definitions() -> void:
 	var dir = DirAccess.open(DEFINITION_PATH)
@@ -29,7 +100,6 @@ func _load_all_definitions() -> void:
 		file_name = dir.get_next()
 	print("Loaded %s entity definitions." % _entity_definitions.size())
 
-
 func _register_all_components() -> void:
 	var dir = DirAccess.open(COMPONENT_PATH)
 	if not dir:
@@ -47,30 +117,7 @@ func _register_all_components() -> void:
 		file_name = dir.get_next()
 	print("Registered %s components: " % _component_map.size(), _component_map.keys())
 
-
-func spawn_entity(definition_id: String, position: Vector3 = Vector3.ZERO) -> BaseEntity:
-	if not _entity_definitions.has(definition_id):
-		printerr("Entity definition not found: ", definition_id)
-		return null
-
-	var definition: Dictionary = _entity_definitions[definition_id]
-	
-	var entity = BaseEntity.new()
-	entity.name = definition.get("name", "UnnamedEntity")
-	entity.position = position
-
-	if definition.has("components"):
-		var components_data: Dictionary = definition["components"]
-		for component_name in components_data:
-			_add_component_to_entity(entity, component_name, components_data[component_name])
-
-	get_tree().current_scene.add_child(entity)
-	
-	print("Successfully spawned entity '%s' at %s." % [entity.name, entity.position])
-	return entity
-
-
-func _add_component_to_entity(entity: BaseEntity, component_name: String, data: Dictionary) -> void:
+func _add_component_to_entity(entity_logic_node: BaseEntity, component_name: String, data: Dictionary) -> void:
 	if not _component_map.has(component_name):
 		printerr("Component '%s' is not registered. Check component script and file name." % component_name)
 		return
@@ -84,5 +131,4 @@ func _add_component_to_entity(entity: BaseEntity, component_name: String, data: 
 	if component_node.has_method("initialize"):
 		component_node.initialize(data)
 	
-	# Pass both the name and the node to the entity.
-	entity.add_component(component_name, component_node)
+	entity_logic_node.add_component(component_name, component_node)

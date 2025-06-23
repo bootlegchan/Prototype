@@ -8,7 +8,6 @@ func initialize(data: Dictionary) -> void:
 
 	# Set color from the hex string in the JSON
 	if data.has("color"):
-		# Godot's Color constructor can parse HTML hex strings
 		material.albedo_color = Color(data["color"])
 
 	# Set shape based on the string in the JSON
@@ -21,12 +20,12 @@ func initialize(data: Dictionary) -> void:
 				mesh_instance.mesh = SphereMesh.new()
 			"cylinder":
 				mesh_instance.mesh = CylinderMesh.new()
+			"capsule": # <-- ADDED THIS NEW SHAPE
+				mesh_instance.mesh = CapsuleMesh.new()
 			_:
-				# Default to a box if shape is unknown
 				push_warning("Unknown shape '%s', defaulting to 'box'." % shape_name)
 				mesh_instance.mesh = BoxMesh.new()
 	else:
-		# Default to a box if shape is not specified
 		mesh_instance.mesh = BoxMesh.new()
 
 	# Apply the material to the mesh instance using the correct Godot 4 property.

@@ -1,19 +1,25 @@
 extends Node3D
 
-# Called when the node enters the scene tree for the first time.
 func _ready() -> void:
-	print("Main scene ready. Beginning test spawn...")
+	print("Main scene ready. Spawning a test scene with a building...")
 	
-	# Check if the factory is ready (it should be, as an autoload)
 	if not EntityFactory:
 		printerr("EntityFactory not found!")
 		return
-	
-	# Spawn a player entity at the world origin
+
+	# Player spawns at the absolute center of the world.
 	EntityFactory.spawn_entity("player", Vector3.ZERO)
+
+	# The new house is placed far behind the player.
+	EntityFactory.spawn_entity("building_house", Vector3(0, 0, -20))
 	
-	# Spawn two goblin entities at different positions
-	EntityFactory.spawn_entity("goblin", Vector3(3, 0, 0))
-	EntityFactory.spawn_entity("goblin", Vector3(-3, 0, 0))
+	# The market stall is placed far to the left.
+	EntityFactory.spawn_entity("market_stall", Vector3(-20, 0, 0))
 	
-	print("Test spawn completed.")
+	# The lamppost is placed far to the right.
+	EntityFactory.spawn_entity("lamppost", Vector3(20, 0, 0))
+	
+	# The Town Guard is placed far in front of the player.
+	EntityFactory.spawn_entity("town_guard", Vector3(0, 0, 20))
+
+	print("Building spawn test completed.")

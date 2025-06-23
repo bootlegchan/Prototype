@@ -1,0 +1,9 @@
+{
+	"name": "Lamppost",
+	"base_node_type": "StaticBody3D",
+	"scale": { "x": 0.5, "y": 4, "z": 0.5 },
+	"components": {
+		"VisualComponent": { "shape": "cylinder", "color": "E0C040" },
+		"TagComponent": { "tags": ["Scenery", "Obstacle", "LightSource"] }
+	}
+}

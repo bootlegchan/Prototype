@@ -1,12 +1,9 @@
 {
 	"name": "Goblin",
+	"base_node_type": "CharacterBody3D",
+	"scale": { "x": 0.8, "y": 1.5, "z": 0.8 },
 	"components": {
-		"VisualComponent": {
-			"shape": "cylinder",
-			"color": "408040"
-		},
-		"TagComponent": {
-			"tags": ["Enemy", "Hostile", "Goblin"]
-		}
+		"VisualComponent": { "shape": "capsule", "color": "408040" },
+		"TagComponent": { "tags": ["Enemy", "Hostile", "Goblin"] }
 	}
 }
