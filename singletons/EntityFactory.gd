@@ -41,12 +41,11 @@ func _register_all_components() -> void:
 	while file_name != "":
 		if not dir.current_is_dir() and file_name.ends_with(".gd"):
 			var script: GDScript = load(COMPONENT_PATH + file_name)
-			# Use the script's class_name as the official component name
-			var component_name = script.get_instance_base_type()
+			var component_name = file_name.get_basename()
 			if not component_name.is_empty():
 				_component_map[component_name] = script
 		file_name = dir.get_next()
-	print("Registered %s components." % _component_map.size())
+	print("Registered %s components: " % _component_map.size(), _component_map.keys())
 
 
 func spawn_entity(definition_id: String, position: Vector3 = Vector3.ZERO) -> BaseEntity:
@@ -56,18 +55,15 @@ func spawn_entity(definition_id: String, position: Vector3 = Vector3.ZERO) -> Ba
 
 	var definition: Dictionary = _entity_definitions[definition_id]
 	
-	# 1. Create the BaseEntity node from code
 	var entity = BaseEntity.new()
 	entity.name = definition.get("name", "UnnamedEntity")
 	entity.position = position
 
-	# 2. Add components defined in the JSON
 	if definition.has("components"):
 		var components_data: Dictionary = definition["components"]
 		for component_name in components_data:
 			_add_component_to_entity(entity, component_name, components_data[component_name])
 
-	# 3. Add the fully constructed entity to the scene tree
 	get_tree().current_scene.add_child(entity)
 	
 	print("Successfully spawned entity '%s' at %s." % [entity.name, entity.position])
@@ -76,20 +72,17 @@ func spawn_entity(definition_id: String, position: Vector3 = Vector3.ZERO) -> Ba
 
 func _add_component_to_entity(entity: BaseEntity, component_name: String, data: Dictionary) -> void:
 	if not _component_map.has(component_name):
-		printerr("Component '%s' is not registered. Check component script and class_name." % component_name)
+		printerr("Component '%s' is not registered. Check component script and file name." % component_name)
 		return
 
-	# 1. Create a generic Node to hold the component script
 	var component_node = Node.new()
 	component_node.name = component_name
 	
-	# 2. Attach the registered component script
 	var component_script: GDScript = _component_map[component_name]
 	component_node.set_script(component_script)
 	
-	# 3. Call the component's initialize function with its data
 	if component_node.has_method("initialize"):
 		component_node.initialize(data)
 	
-	# 4. Add the component to the entity
-	entity.add_component(component_node)
+	# Pass both the name and the node to the entity.
+	entity.add_component(component_name, component_node)

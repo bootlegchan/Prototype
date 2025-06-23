@@ -29,5 +29,7 @@ func initialize(data: Dictionary) -> void:
 		# Default to a box if shape is not specified
 		mesh_instance.mesh = BoxMesh.new()
 
-	mesh_instance.set_surface_material(0, material)
+	# Apply the material to the mesh instance using the correct Godot 4 property.
+	mesh_instance.material_override = material
+	
 	add_child(mesh_instance)
