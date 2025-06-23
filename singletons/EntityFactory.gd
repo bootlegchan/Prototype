@@ -48,11 +48,9 @@ func spawn_entity(definition_id: String, position: Vector3 = Vector3.ZERO) -> No
 		var shape_type_str = visual_data.get("shape", "box")
 		_add_collision_shape_to_entity(physics_body, shape_type_str)
 
-	# --- NEW TWO-PASS COMPONENT CREATION ---
 	if definition.has("components"):
 		var components_to_add: Dictionary = definition["components"]
 		
-		# PASS 1: Create and add all component nodes so they exist in the tree.
 		for component_name in components_to_add:
 			if not _component_map.has(component_name):
 				printerr("Component '%s' is not registered." % component_name)
@@ -62,7 +60,6 @@ func spawn_entity(definition_id: String, position: Vector3 = Vector3.ZERO) -> No
 			component_node.set_script(_component_map[component_name])
 			entity_logic_node.add_component(component_name, component_node)
 
-		# PASS 2: Initialize all components. Now they can safely find their siblings.
 		for component_name in components_to_add:
 			var component_node = entity_logic_node.get_component(component_name)
 			if component_node and component_node.has_method("initialize"):
@@ -80,7 +77,7 @@ func _initialize_component(component_node: Node, component_name: String, entity_
 	var data_for_init
 	
 	match component_name:
-		"StateComponent", "ScheduleComponent":
+		"StateComponent", "ScheduleComponent", "InventoryComponent":
 			var component_data = entity_definition["components"].get(component_name, {})
 			data_for_init = [entity_name, component_data]
 		
@@ -95,15 +92,12 @@ func _initialize_component(component_node: Node, component_name: String, entity_
 					push_warning("Undefined tag '%s' for entity '%s'." % [tag_id, entity_name])
 			data_for_init = [resolved_tags]
 		
-		_: # Default handler
+		_:
 			var component_data = entity_definition["components"].get(component_name, {})
 			data_for_init = [component_data]
 	
 	Callable(component_node, "initialize").callv(data_for_init)
 
-
-# --- Unchanged Helper Functions ---
-# Note: _add_component_to_entity is now gone, replaced by the two-pass system above.
 
 func _recursive_load_definitions(path: String) -> void:
 	var dir = DirAccess.open(path)

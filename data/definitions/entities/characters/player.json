@@ -4,6 +4,7 @@
 	"scale": { "x": 1, "y": 2, "z": 1 },
 	"components": {
 		"VisualComponent": { "shape": "capsule", "color": "8080ff" },
-		"TagComponent": { "tags": ["Player", "Controllable", "Character"] }
+		"TagComponent": { "tags": ["roles/player"] },
+		"InventoryComponent": {}
 	}
 }
