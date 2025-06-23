@@ -1,0 +1,12 @@
+{
+	"name": "Goblin",
+	"components": {
+		"VisualComponent": {
+			"shape": "cylinder",
+			"color": "408040"
+		},
+		"TagComponent": {
+			"tags": ["Enemy", "Hostile", "Goblin"]
+		}
+	}
+}
