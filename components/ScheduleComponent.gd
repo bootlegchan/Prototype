@@ -20,13 +20,16 @@ func connect_to_time_system() -> void:
 
 func _on_hour_changed(new_hour: int) -> void:
 	var hour_key = str(new_hour)
+	
 	if schedule.has(hour_key):
 		var new_state_id: String = schedule[hour_key]
 		var state_comp = get_parent().get_component("StateComponent")
 		
 		if state_comp:
+			# Only change state and print if we are not already in the correct state.
 			if state_comp.get_current_state_id() != new_state_id:
 				state_comp.push_state(new_state_id)
+				# This print statement is now inside the if block. This is the fix.
 				print("Time is now %02d:00. '%s' is now performing scheduled activity: '%s'" % [new_hour, _entity_name, new_state_id])
 		else:
 			printerr("ScheduleComponent on '%s' requires a StateComponent to function." % _entity_name)
