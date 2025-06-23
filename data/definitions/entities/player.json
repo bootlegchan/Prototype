@@ -1,0 +1,12 @@
+{
+	"name": "Player",
+	"components": {
+		"VisualComponent": {
+			"shape": "box",
+			"color": "8080ff"
+		},
+		"TagComponent": {
+			"tags": ["Player", "Controllable", "Character"]
+		}
+	}
+}
