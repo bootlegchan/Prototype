@@ -1,5 +1,4 @@
 # The line "class_name TimeSystem" has been REMOVED from the top of this file.
-# This is the definitive fix for the parser error.
 extends Node
 
 # --- Signals ---
@@ -9,7 +8,10 @@ signal time_of_day_changed(new_time_of_day_id: String)
 
 
 # --- Configuration ---
-const SECONDS_PER_MINUTE: float = 1.0
+# --- THIS IS THE CHANGE ---
+# A value of 0.1 means 10 game minutes will pass every real-world second.
+# An in-game hour will now pass every 6 real-world seconds.
+const SECONDS_PER_MINUTE: float = 0.1
 
 
 # --- State ---

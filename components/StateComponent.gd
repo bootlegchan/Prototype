@@ -4,33 +4,30 @@ extends Node
 var _state_stack: Array[Dictionary] = []
 var _entity_name: String = "Unnamed"
 
-func initialize(entity_name: String, initial_stack: Array[Dictionary]) -> void:
+func initialize(entity_name: String, data: Dictionary) -> void:
 	_entity_name = entity_name
-	_state_stack = initial_stack
-	
-	if not _state_stack.is_empty():
-		# This print uses the now-correct _entity_name.
-		print("Entity '%s' initialized in state: '%s'" % [_entity_name, get_current_state_id()])
+	var initial_state_id = data.get("initial_state")
+	if initial_state_id:
+		# The ScheduleComponent is now responsible for pushing the initial state.
+		# This component just prepares itself.
+		print("StateComponent for '%s' is ready." % _entity_name)
 	else:
-		print("Entity '%s' initialized with no state." % _entity_name)
+		push_warning("StateComponent for '%s' has no initial state defined." % _entity_name)
 
-# --- Public API for State Machine ---
-
+# --- Public API ---
 func push_state(state_id: String) -> void:
 	var state_data = StateRegistry.get_state_definition(state_id)
 	if not state_data.is_empty():
 		var new_state_data = state_data.duplicate()
 		new_state_data["id"] = state_id
 		_state_stack.push_back(new_state_data)
-		# Use the stored _entity_name for safe printing. This is the fix.
 		print("Entity '%s' entered state: '%s'" % [_entity_name, state_id])
 	else:
-		push_warning("Attempted to push undefined state '%s'" % state_id)
+		push_warning("Attempted to push undefined state '%s' for '%s'" % [state_id, _entity_name])
 
 func pop_state() -> void:
 	if _state_stack.size() > 1:
 		var old_state = _state_stack.pop_back()
-		# Use the stored _entity_name for safe printing. This is the fix.
 		print("Entity '%s' exited state: '%s'" % [_entity_name, old_state.get("id", "unknown")])
 	else:
 		push_warning("Attempted to pop the base state for '%s'." % _entity_name)

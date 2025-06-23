@@ -6,7 +6,6 @@ const COMPONENT_PATH = "res://components/"
 var _entity_definitions: Dictionary = {}
 var _component_map: Dictionary = {}
 
-
 func _ready() -> void:
 	_entity_definitions.clear()
 	_component_map.clear()
@@ -49,10 +48,25 @@ func spawn_entity(definition_id: String, position: Vector3 = Vector3.ZERO) -> No
 		var shape_type_str = visual_data.get("shape", "box")
 		_add_collision_shape_to_entity(physics_body, shape_type_str)
 
+	# --- NEW TWO-PASS COMPONENT CREATION ---
 	if definition.has("components"):
-		var components_data: Dictionary = definition["components"]
-		for component_name in components_data:
-			_add_component_to_entity(entity_logic_node, component_name, definition)
+		var components_to_add: Dictionary = definition["components"]
+		
+		# PASS 1: Create and add all component nodes so they exist in the tree.
+		for component_name in components_to_add:
+			if not _component_map.has(component_name):
+				printerr("Component '%s' is not registered." % component_name)
+				continue
+			var component_node = Node.new()
+			component_node.name = component_name
+			component_node.set_script(_component_map[component_name])
+			entity_logic_node.add_component(component_name, component_node)
+
+		# PASS 2: Initialize all components. Now they can safely find their siblings.
+		for component_name in components_to_add:
+			var component_node = entity_logic_node.get_component(component_name)
+			if component_node and component_node.has_method("initialize"):
+				_initialize_component(component_node, component_name, definition)
 
 	get_tree().current_scene.add_child(physics_body)
 	
@@ -61,47 +75,35 @@ func spawn_entity(definition_id: String, position: Vector3 = Vector3.ZERO) -> No
 
 
 # --- Private Helper Functions ---
-func _add_component_to_entity(entity_logic_node: BaseEntity, component_name: String, entity_definition: Dictionary) -> void:
-	if not _component_map.has(component_name):
-		printerr("Component '%s' is not registered." % component_name)
-		return
-
-	var component_node = Node.new()
-	component_node.name = component_name
-	var component_script: GDScript = _component_map[component_name]
-	component_node.set_script(component_script)
-	
+func _initialize_component(component_node: Node, component_name: String, entity_definition: Dictionary) -> void:
 	var entity_name = entity_definition.get("name", "UnnamedEntity")
-
-	if component_node.has_method("initialize"):
-		var data_for_init
+	var data_for_init
+	
+	match component_name:
+		"StateComponent", "ScheduleComponent":
+			var component_data = entity_definition["components"].get(component_name, {})
+			data_for_init = [entity_name, component_data]
 		
-		match component_name:
-			"StateComponent", "ScheduleComponent":
-				var component_data = entity_definition["components"].get(component_name, {})
-				data_for_init = [entity_name, component_data]
-			
-			"TagComponent":
-				var resolved_tags: Dictionary = {}
-				var tag_comp_data = entity_definition["components"].get(component_name, {})
-				var tags_to_resolve = tag_comp_data.get("tags", [])
-				
-				for tag_id in tags_to_resolve:
-					if TagRegistry.is_tag_defined(tag_id):
-						resolved_tags[tag_id] = TagRegistry.get_tag_definition(tag_id)
-					else:
-						push_warning("Undefined tag '%s' for entity '%s'." % [tag_id, entity_name])
-				
-				data_for_init = [resolved_tags]
-			
-			_:
-				var component_data = entity_definition["components"].get(component_name, {})
-				data_for_init = [component_data]
+		"TagComponent":
+			var resolved_tags: Dictionary = {}
+			var tag_comp_data = entity_definition["components"].get(component_name, {})
+			var tags_to_resolve = tag_comp_data.get("tags", [])
+			for tag_id in tags_to_resolve:
+				if TagRegistry.is_tag_defined(tag_id):
+					resolved_tags[tag_id] = TagRegistry.get_tag_definition(tag_id)
+				else:
+					push_warning("Undefined tag '%s' for entity '%s'." % [tag_id, entity_name])
+			data_for_init = [resolved_tags]
 		
-		Callable(component_node, "initialize").callv(data_for_init)
+		_: # Default handler
+			var component_data = entity_definition["components"].get(component_name, {})
+			data_for_init = [component_data]
+	
+	Callable(component_node, "initialize").callv(data_for_init)
 
-	entity_logic_node.add_component(component_name, component_node)
 
+# --- Unchanged Helper Functions ---
+# Note: _add_component_to_entity is now gone, replaced by the two-pass system above.
 
 func _recursive_load_definitions(path: String) -> void:
 	var dir = DirAccess.open(path)
@@ -125,7 +127,6 @@ func _recursive_load_definitions(path: String) -> void:
 			_entity_definitions[definition_id] = json_data
 		item_name = dir.get_next()
 
-
 func _register_all_components() -> void:
 	var dir = DirAccess.open(COMPONENT_PATH)
 	if not dir:
@@ -141,7 +142,6 @@ func _register_all_components() -> void:
 				_component_map[component_name] = script
 		file_name = dir.get_next()
 	print("Registered %s components: " % _component_map.size(), _component_map.keys())
-
 
 func _add_collision_shape_to_entity(physics_body: Node3D, shape_type: String) -> void:
 	var collision_shape_node = CollisionShape3D.new()
