@@ -6,6 +6,7 @@ const COMPONENT_PATH = "res://components/"
 var _entity_definitions: Dictionary = {}
 var _component_map: Dictionary = {}
 
+
 func _ready() -> void:
 	_entity_definitions.clear()
 	_component_map.clear()
@@ -76,20 +77,9 @@ func _add_component_to_entity(entity_logic_node: BaseEntity, component_name: Str
 		var data_for_init
 		
 		match component_name:
-			"StateComponent":
-				var initial_stack: Array[Dictionary] = []
-				var state_comp_data = entity_definition["components"].get(component_name, {})
-				var initial_state_id = state_comp_data.get("initial_state")
-				
-				if initial_state_id and StateRegistry.is_state_defined(initial_state_id):
-					var state_def = StateRegistry.get_state_definition(initial_state_id).duplicate()
-					# --- THIS IS THE FIX ---
-					state_def["id"] = initial_state_id # Inject the ID for later reference
-					initial_stack.push_back(state_def)
-				else:
-					push_warning("Entity '%s' has no valid initial state." % entity_name)
-
-				data_for_init = [entity_name, initial_stack]
+			"StateComponent", "ScheduleComponent":
+				var component_data = entity_definition["components"].get(component_name, {})
+				data_for_init = [entity_name, component_data]
 			
 			"TagComponent":
 				var resolved_tags: Dictionary = {}
@@ -104,8 +94,9 @@ func _add_component_to_entity(entity_logic_node: BaseEntity, component_name: Str
 				
 				data_for_init = [resolved_tags]
 			
-			_: # Default handler for all other components
-				data_for_init = [entity_definition["components"].get(component_name, {})]
+			_:
+				var component_data = entity_definition["components"].get(component_name, {})
+				data_for_init = [component_data]
 		
 		Callable(component_node, "initialize").callv(data_for_init)
 
