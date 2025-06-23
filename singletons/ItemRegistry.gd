@@ -1,6 +1,9 @@
 extends Node
 
-const ITEM_DEFINITION_PATH = "res://data/definitions/items/"
+# --- THIS IS THE FIX ---
+# This path now correctly points to the items folder inside the entities folder,
+# matching your project's file structure.
+const ITEM_DEFINITION_PATH = "res://data/definitions/entities/items/"
 
 var _item_definitions: Dictionary = {}
 

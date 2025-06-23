@@ -1,23 +1,32 @@
 class_name InventoryComponent
 extends Node
 
-# This node will act as the container for the actual item entity nodes.
 var item_container: Node
 var _entity_name: String = "Unnamed"
 
 func initialize(entity_name: String, data: Dictionary) -> void:
 	_entity_name = entity_name
-	
-	# Create a dedicated child node to hold the items.
 	item_container = Node.new()
 	item_container.name = "ItemContainer"
 	add_child(item_container)
-	
 	print("InventoryComponent initialized for '%s'." % _entity_name)
 
+# --- NEW FUNCTION ---
+# Called by the EntityManager to save the inventory contents.
+func get_persistent_data() -> Dictionary:
+	var items_data = []
+	for item_entity in item_container.get_children():
+		var logic_node = item_entity.get_node("EntityLogic")
+		var item_comp = logic_node.get_component("ItemComponent")
+		items_data.append({
+			"definition_id": "items/consumable/apple", # This should be dynamic later
+			"quantity": item_comp.quantity
+		})
+	return {
+		"items": items_data
+	}
 
 # --- Public API ---
-
 func add_item_entity(item_entity: Node) -> void:
 	var logic_node = item_entity.get_node("EntityLogic")
 	if not logic_node: return
@@ -35,8 +44,14 @@ func add_item_entity(item_entity: Node) -> void:
 			var existing_item_comp = existing_logic_node.get_component("ItemComponent")
 			if existing_item_comp.display_name == item_comp.display_name:
 				existing_item_comp.quantity += item_comp.quantity
-				print("Merged %s into existing stack in '%s'. New total: %s" % [item_entity.name, _entity_name, existing_item_comp.quantity])
 				item_entity.queue_free()
+				
+				EventSystem.emit_event("item_added_to_inventory", {
+					"owner_name": _entity_name,
+					"item_id": "items/consumable/apple",
+					"quantity": item_comp.quantity,
+					"was_merged": true
+				})
 				return
 	
 	if item_entity.get_parent():
@@ -45,8 +60,12 @@ func add_item_entity(item_entity: Node) -> void:
 	item_container.add_child(item_entity)
 	_set_item_in_inventory_state(item_entity, true)
 	
-	print("Added new item entity '%s' to '%s' inventory." % [item_entity.name, _entity_name])
-
+	EventSystem.emit_event("item_added_to_inventory", {
+		"owner_name": _entity_name,
+		"item_id": "items/consumable/apple",
+		"quantity": item_comp.quantity,
+		"was_merged": false
+	})
 
 func drop_item_entity(item_entity: Node, drop_position: Vector3) -> void:
 	if item_entity.get_parent() != item_container:
@@ -60,10 +79,11 @@ func drop_item_entity(item_entity: Node, drop_position: Vector3) -> void:
 		item_entity.global_position = drop_position
 		
 	_set_item_in_inventory_state(item_entity, false)
-	print("Dropped item '%s' from '%s' inventory into the world." % [item_entity.name, _entity_name])
+	EventSystem.emit_event("item_dropped", {
+		"owner_name": _entity_name,
+		"item_name": item_entity.name
+	})
 
-
-# Helper function to disable physics and visibility for items in an inventory.
 func _set_item_in_inventory_state(item_entity: Node, is_in_inventory: bool) -> void:
 	if item_entity is CollisionObject3D:
 		item_entity.set_process(!is_in_inventory)
@@ -78,9 +98,7 @@ func _set_item_in_inventory_state(item_entity: Node, is_in_inventory: bool) -> v
 	if logic_node:
 		var visual_comp = logic_node.get_component("VisualComponent")
 		if visual_comp:
-			# --- THIS IS THE FIX ---
-			# Find the actual MeshInstance3D child within the VisualComponent.
 			for child in visual_comp.get_children():
 				if child is MeshInstance3D:
 					child.visible = not is_in_inventory
-					break # Stop after finding the first one.
+					break
