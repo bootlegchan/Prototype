@@ -1,14 +1,12 @@
 extends Node
 
-const DEFINITION_PATH = "res://data/definitions/entities/" # <-- THIS LINE IS NOW CORRECT
+const DEFINITION_PATH = "res://data/definitions/entities/"
 const COMPONENT_PATH = "res://components/"
 
 var _entity_definitions: Dictionary = {}
 var _component_map: Dictionary = {}
 
-
 func _ready() -> void:
-	# Clear any previous data and load everything fresh.
 	_entity_definitions.clear()
 	_component_map.clear()
 	
@@ -53,7 +51,7 @@ func spawn_entity(definition_id: String, position: Vector3 = Vector3.ZERO) -> No
 	if definition.has("components"):
 		var components_data: Dictionary = definition["components"]
 		for component_name in components_data:
-			_add_component_to_entity(entity_logic_node, component_name, components_data[component_name])
+			_add_component_to_entity(entity_logic_node, component_name, definition)
 
 	get_tree().current_scene.add_child(physics_body)
 	
@@ -62,8 +60,42 @@ func spawn_entity(definition_id: String, position: Vector3 = Vector3.ZERO) -> No
 
 
 # --- Private Helper Functions ---
+func _add_component_to_entity(entity_logic_node: BaseEntity, component_name: String, entity_definition: Dictionary) -> void:
+	if not _component_map.has(component_name):
+		printerr("Component '%s' is not registered. Check component script and file name." % component_name)
+		return
 
-# RECURSIVE LOADER - This function calls itself to scan subdirectories.
+	var component_node = Node.new()
+	component_node.name = component_name
+	
+	var component_script: GDScript = _component_map[component_name]
+	component_node.set_script(component_script)
+	
+	var component_data
+	
+	if component_name == "TagComponent":
+		var tag_registry = get_node_or_null("/root/TagRegistry")
+		if not tag_registry:
+			printerr("FATAL: TagRegistry singleton not found in the scene tree!")
+			return
+		
+		var resolved_tags = {}
+		var tags_to_resolve = entity_definition["components"]["TagComponent"].get("tags", [])
+		for tag_id in tags_to_resolve:
+			if tag_registry.is_tag_defined(tag_id):
+				resolved_tags[tag_id] = tag_registry.get_tag_definition(tag_id)
+			else:
+				push_warning("Undefined tag '%s' requested by entity '%s'." % [tag_id, entity_definition.get("name")])
+		component_data = resolved_tags
+	else:
+		component_data = entity_definition["components"][component_name]
+
+	if component_node.has_method("initialize"):
+		component_node.initialize(component_data)
+	
+	entity_logic_node.add_component(component_name, component_node)
+
+
 func _recursive_load_definitions(path: String) -> void:
 	var dir = DirAccess.open(path)
 	if not dir:
@@ -80,11 +112,8 @@ func _recursive_load_definitions(path: String) -> void:
 		var full_path = "%s/%s" % [path.trim_suffix("/"), item_name]
 		
 		if dir.current_is_dir():
-			# If it's a directory, call this function again on the new path.
 			_recursive_load_definitions(full_path)
 		elif item_name.ends_with(".json"):
-			# It's a file, so load it.
-			# Create the unique ID from the path relative to the base DEFINITION_PATH.
 			var relative_path = full_path.replace(DEFINITION_PATH, "")
 			var definition_id = relative_path.trim_suffix(".json")
 			
@@ -132,20 +161,3 @@ func _add_collision_shape_to_entity(physics_body: Node3D, shape_type: String) ->
 			
 	collision_shape_node.shape = shape_resource
 	physics_body.add_child(collision_shape_node)
-
-
-func _add_component_to_entity(entity_logic_node: BaseEntity, component_name: String, data: Dictionary) -> void:
-	if not _component_map.has(component_name):
-		printerr("Component '%s' is not registered. Check component script and file name." % component_name)
-		return
-
-	var component_node = Node.new()
-	component_node.name = component_name
-	
-	var component_script: GDScript = _component_map[component_name]
-	component_node.set_script(component_script)
-	
-	if component_node.has_method("initialize"):
-		component_node.initialize(data)
-	
-	entity_logic_node.add_component(component_name, component_node)

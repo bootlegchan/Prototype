@@ -1,20 +1,24 @@
 class_name TagComponent
 extends Node
 
-var tags: Array[String] = []
+# We store the full tag definition dictionary, keyed by the tag's ID string.
+var tags: Dictionary = {}
 
-# This function will be called by the EntityFactory to pass in data from the JSON file.
-func initialize(data: Dictionary) -> void:
-	if data.has("tags") and data["tags"] is Array:
-		# Clear any existing tags before initializing.
-		tags.clear()
-		# Loop through the generic array from the JSON data.
-		for item in data["tags"]:
-			# Ensure the item is a string before adding it. This prevents crashes if the JSON is malformed.
-			if item is String:
-				tags.append(item)
-			else:
-				push_warning("Non-string value found in 'tags' for entity. Value: %s" % str(item))
+# The factory now passes the fully-resolved tag data directly to this function.
+func initialize(resolved_tags_data: Dictionary) -> void:
+	tags = resolved_tags_data
 
-func has_tag(tag: String) -> bool:
-	return tags.has(tag)
+func has_tag(tag_id: String) -> bool:
+	return tags.has(tag_id)
+
+func get_tag_data(tag_id: String) -> Dictionary:
+	return tags.get(tag_id, {}) # Return an empty Dictionary for safety.
+
+func find_first_effect(effect_type: String) -> Dictionary:
+	for tag_id in tags:
+		var tag_data = tags[tag_id]
+		if tag_data.has("effects"):
+			for effect in tag_data["effects"]:
+				if effect.get("type") == effect_type:
+					return effect
+	return {} # Return an empty Dictionary for safety.

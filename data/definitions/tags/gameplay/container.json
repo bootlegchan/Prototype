@@ -1,0 +1,9 @@
+{
+	"description": "This entity can hold items.",
+	"effects": [
+		{
+			"type": "InventoryProvider",
+			"slots": 8
+		}
+	]
+}

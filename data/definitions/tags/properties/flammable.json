@@ -1,0 +1,10 @@
+{
+	"description": "This entity can catch fire.",
+	"effects": [
+		{
+			"type": "Weakness",
+			"damage_type": "Fire",
+			"multiplier": 1.5
+		}
+	]
+}

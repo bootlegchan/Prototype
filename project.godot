@@ -1,6 +1,6 @@
 ; Engine configuration file.
 ; It's best edited using the editor UI and not directly,
-; since the parameters that go here are not all obvious.
+; since the parameters might change in future versions.
 ;
 ; Format:
 ;   [section] ; section goes between []
@@ -11,10 +11,24 @@ config_version=5
 [application]
 
 config/name="Prototype"
-run/main_scene="uid://dl3qyx85j6nko"
-config/features=PackedStringArray("4.4", "Forward Plus")
+run/main_scene="res://Main.tscn"
+config/features=PackedStringArray("4.1", "Forward Plus")
 config/icon="res://icon.svg"
 
 [autoload]
 
+TagRegistry="*res://singletons/TagRegistry.gd"
 EntityFactory="*res://singletons/EntityFactory.gd"
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+
+[dotnet]
+
+project/assembly_name="Prototype"
+
+[rendering]
+
+renderer/rendering_method="forward_plus"

@@ -4,6 +4,11 @@
 	"scale": { "x": 1, "y": 1.2, "z": 1 },
 	"components": {
 		"VisualComponent": { "shape": "cylinder", "color": "8B4513" },
-		"TagComponent": { "tags": ["Scenery", "Obstacle", "Container"] }
+		"TagComponent": {
+			"tags": [
+				"properties/flammable",
+				"gameplay/container"
+			]
+		}
 	}
 }
