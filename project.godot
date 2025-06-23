@@ -21,6 +21,7 @@ TimeSystem="*res://singletons/TimeSystem.gd"
 TagRegistry="*res://singletons/TagRegistry.gd"
 StateRegistry="*res://singletons/StateRegistry.gd"
 EntityFactory="*res://singletons/EntityFactory.gd"
+SpawningSystem="*res://singletons/SpawningSystem.gd"
 
 [display]
 

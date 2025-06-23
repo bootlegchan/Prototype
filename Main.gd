@@ -1,13 +1,11 @@
 extends Node3D
 
 func _ready() -> void:
-	print("Main scene ready. Spawning a scheduled entity.")
+	print("Main scene ready. Requesting initial spawn...")
 	
-	if not EntityFactory:
-		printerr("EntityFactory not found!")
-		return
+	# We just tell the SpawningSystem which layout to load.
+	# We use call_deferred to ensure all singletons are ready.
+	call_deferred("request_spawn")
 
-	EntityFactory.spawn_entity("characters/town_guard", Vector3.ZERO)
-	
-	print("\n--- Simulation running. Watch the output log as in-game hours pass. ---")
-	print("An in-game minute passes every real-world second.")
+func request_spawn() -> void:
+	SpawningSystem.execute_spawn_list("initial_town_square")
