@@ -1,17 +1,23 @@
 extends Node
 
-# This script centralizes all hardcoded paths for easy management and modification.
+# This script centralizes all hardcoded paths for easy management.
 
-# --- Definition Paths ---
-const ENTITY_DEFINITION_PATH = "res://data/definitions/entities/"
-const ITEM_DEFINITION_PATH = "res://data/definitions/items/"
-const SPAWN_LIST_PATH = "res://data/definitions/spawn_lists/"
-const STATE_DEFINITION_PATH = "res://data/definitions/states/"
-const TAG_DEFINITION_PATH = "res://data/definitions/tags/"
-const SETTINGS_PATH = "res://data/definitions/settings/"
+# --- Core Definition Paths ---
+const DEFINITIONS_BASE_PATH = "res://data/definitions/"
 
-# --- Game Data Paths ---
-const WORLD_STATE_PATH = "res://data/world_state.json"
+const ENTITY_DEFINITION_PATH = DEFINITIONS_BASE_PATH + "entities/"
+const ITEM_DEFINITION_PATH = DEFINITIONS_BASE_PATH + "items/"
+const SPAWN_LIST_PATH = DEFINITIONS_BASE_PATH + "spawn_lists/"
+const STATE_DEFINITION_PATH = DEFINITIONS_BASE_PATH + "states/"
+const TAG_DEFINITION_PATH = DEFINITIONS_BASE_PATH + "tags/"
+const SCHEDULES_DEFINITION_PATH = DEFINITIONS_BASE_PATH + "schedules/"
+const SETTINGS_PATH = DEFINITIONS_BASE_PATH + "settings/"
+const WORLD_DATA_PATH = DEFINITIONS_BASE_PATH + "world/"
+
+# --- Specific File Paths ---
+const CALENDER_FILE_PATH = WORLD_DATA_PATH + "calender.json"
+const WORLD_STATE_FILE_PATH = WORLD_DATA_PATH + "world_state.json"
+const TIME_SETTINGS_FILE_PATH = SETTINGS_PATH + "time_settings.json"
 
 # --- Component Paths ---
 const COMPONENT_PATH = "res://components/"

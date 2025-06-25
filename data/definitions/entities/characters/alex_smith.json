@@ -1,0 +1,15 @@
+{
+	"name": "Alex",
+	"base_node_type": "CharacterBody3D",
+	"components": {
+		"VisualComponent": { "shape": "capsule", "color": "ADD8E6" },
+		"StateComponent": { "initial_state": "common/idle" },
+		"ScheduleComponent": {
+			"layers": [
+				"roles/student",
+				"jobs/part_time_cleaner",
+				"personal/alex"
+			]
+		}
+	}
+}

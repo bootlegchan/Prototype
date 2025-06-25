@@ -5,9 +5,11 @@ var _node_to_instance_id_map: Dictionary = {}
 var _spawn_lists: Dictionary = {}
 var _next_uid: int = 0
 
+
 func _ready() -> void:
 	_load_all_spawn_lists()
 	load_world_state()
+
 
 func _load_all_spawn_lists() -> void:
 	_spawn_lists.clear()
@@ -25,11 +27,15 @@ func _load_all_spawn_lists() -> void:
 		file_name = dir.get_next()
 	print("Loaded %s spawn lists." % _spawn_lists.size())
 
+
 func load_world_state() -> void:
-	var file = FileAccess.open(Config.WORLD_STATE_PATH, FileAccess.READ)
+	# --- THIS IS THE FIX ---
+	# Use the new, correct constant name from the Config singleton.
+	var file = FileAccess.open(Config.WORLD_STATE_FILE_PATH, FileAccess.READ)
 	if not file:
-		printerr("FATAL: Could not open world state file at: ", Config.WORLD_STATE_PATH)
+		printerr("FATAL: Could not open world state file at: ", Config.WORLD_STATE_FILE_PATH)
 		return
+		
 	var world_data = JSON.parse_string(file.get_as_text())
 	var entities_to_load = world_data.get("entities", [])
 	_entity_registry.clear()
@@ -41,6 +47,7 @@ func load_world_state() -> void:
 		}
 		stage_entity(instance_id)
 	print("Loaded and staged %s persistent entities from world state." % _entity_registry.size())
+
 
 func execute_spawn_list(list_id: String, base_position: Vector3 = Vector3.ZERO) -> Array[String]:
 	if not _spawn_lists.has(list_id):
@@ -62,6 +69,7 @@ func execute_spawn_list(list_id: String, base_position: Vector3 = Vector3.ZERO) 
 	print("--- Spawn List Execution Finished ---")
 	return spawned_instance_ids
 
+
 func request_new_entity(definition_id: String, position: Vector3) -> String:
 	var base_name = definition_id.get_slice("/", -1)
 	var instance_id = "%s_dyn_%s" % [base_name, str(_get_next_uid())]
@@ -69,6 +77,7 @@ func request_new_entity(definition_id: String, position: Vector3) -> String:
 	EventSystem.emit_event("entity_record_created", {"instance_id": instance_id})
 	stage_entity(instance_id)
 	return instance_id
+
 
 func stage_entity(instance_id: String) -> void:
 	if not _entity_registry.has(instance_id): return
@@ -80,6 +89,7 @@ func stage_entity(instance_id: String) -> void:
 		if entity_node is Node3D and entity_data.has("rotation"): entity_node.rotation_degrees = entity_data["rotation"]
 		get_tree().current_scene.add_child(entity_node)
 		EventSystem.emit_event("entity_staged", {"instance_id": instance_id, "node": entity_node})
+
 
 func unstage_entity(instance_id: String) -> void:
 	var entity_node = get_node_from_instance_id(instance_id)
@@ -101,21 +111,26 @@ func unstage_entity(instance_id: String) -> void:
 	EventSystem.emit_event("entity_unstaged", {"instance_id": instance_id})
 	print("Entity '%s' unstaged. Data preserved." % instance_id)
 
+
 func destroy_entity_permanently(instance_id: String) -> void:
 	if not _entity_registry.has(instance_id): return
 	unstage_entity(instance_id)
-	if _entity_registry.has(instance_id): _entity_registry.erase(instance_id)
+	if _entity_registry.has(instance_id):
+		_entity_registry.erase(instance_id)
 	EventSystem.emit_event("entity_destroyed", {"instance_id": instance_id})
+
 
 func add_tag_to_entity(instance_id: String, tag_id: String) -> void:
 	var component = get_entity_component(instance_id, "TagComponent")
 	if component:
 		component.add_tag(tag_id)
 
+
 func set_entity_state(instance_id: String, state_id: String) -> void:
 	var state_comp = get_entity_component(instance_id, "StateComponent")
 	if state_comp:
 		state_comp.push_state(state_id)
+
 
 func get_entity_component(instance_id: String, component_name: String) -> Node:
 	var node = get_node_from_instance_id(instance_id)
@@ -124,10 +139,12 @@ func get_entity_component(instance_id: String, component_name: String) -> Node:
 		if is_instance_valid(logic_node): return logic_node.get_component(component_name)
 	return null
 
+
 func get_node_from_instance_id(instance_id: String) -> Node:
 	for node in _node_to_instance_id_map:
 		if _node_to_instance_id_map[node] == instance_id: return node
 	return null
+
 
 func _get_next_uid() -> int:
 	_next_uid += 1

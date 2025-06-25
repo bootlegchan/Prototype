@@ -1,0 +1,8 @@
+{
+	"description": "The work schedule for a part-time cleaner.",
+	"priority": 50,
+	"weekly_schedule": {
+		"monday":    { "18:00": "activity/clean_the_library" },
+		"wednesday": { "18:00": "activity/clean_the_library" }
+	}
+}

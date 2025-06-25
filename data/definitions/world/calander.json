@@ -1,0 +1,5 @@
+{
+	"description": "Defines the structure of the game's calendar and world events.",
+	"months": [ ... ],
+	"holidays_and_events": [ ... ]
+}

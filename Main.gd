@@ -1,43 +1,23 @@
 extends Node3D
 
-var player_id: String = "player_character"
-var barrel_id: String = "suspicious_barrel"
-
 func _ready() -> void:
-	print("Main scene ready. World state loaded. Starting complex test sequence...")
-	TimeSystem.current_hour = 8
-	TimeSystem.current_minute = 0
-	# Wait for the scheduled event to fire.
-	# The ScheduleComponent connects to the minute_changed signal.
-	# We will wait for the barrel to become active, then interact.
-	var timer = get_tree().create_timer(4.0) # ~4 minutes of game time
-	timer.timeout.connect(run_interaction_test)
-
-func run_interaction_test() -> void:
-	print("\n--- Running Interaction Test ---")
+	print("Main scene ready. Testing layered schedule conflicts.")
 	
-	# 1. Simulate player interacting with the barrel
-	print("\n[Phase 1: Player interacts with the 'active' barrel]")
-	EntityManager.add_tag_to_entity(player_id, "status/cursed")
+	# Spawn our test character using their new, unique, permanent ID.
+	EntityManager.request_new_entity("characters/alex_smith", Vector3.ZERO)
 	
-	# 2. Unstage the player to test persistence
-	print("\n[Phase 2: Unstaging player]")
-	EntityManager.unstage_entity(player_id)
+	# Set time to a conflict point: Monday at 18:00
+	# The student schedule is free, but the cleaner schedule has work.
+	TimeSystem.current_year = 1
+	TimeSystem.current_month_index = 5 # June
+	# Assuming Day 1 is Monday for this test.
+	# A more robust TimeSystem would calculate the day of the week.
+	TimeSystem.current_day = 1 # A Monday
+	TimeSystem.current_hour = 17
+	TimeSystem.current_minute = 58
 	
-	# 3. Stage the player again
-	print("\n[Phase 3: Staging player]")
-	EntityManager.stage_entity(player_id)
-	
-	call_deferred("verify_player_state")
-
-
-func verify_player_state() -> void:
-	print("\n[Phase 4: Verifying player's tags after respawn]")
-	var player_tag_comp = EntityManager.get_entity_component(player_id, "TagComponent")
-	
-	if player_tag_comp and player_tag_comp.has_tag("status/cursed"):
-		print("VERIFICATION PASSED: Player correctly has the 'cursed' tag.")
-	else:
-		print("VERIFICATION FAILED: Player is missing the 'cursed' tag after being restaged.")
-		
-	print("\n--- Complex Test Complete ---")
+	# Speed up time for quick testing.
+	# The property must be accessed via the node as it's not a const.
+	var time_system = get_node_or_null("/root/TimeSystem")
+	if time_system:
+		time_system._seconds_per_minute = 0.5

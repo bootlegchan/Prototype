@@ -1,0 +1,11 @@
+{
+	"description": "The daily routine of a student.",
+	"priority": 10,
+	"weekly_schedule": {
+		"monday":    { "09:00": "activity/go_to_class" },
+		"tuesday":   { "09:00": "activity/go_to_class" },
+		"wednesday": { "09:00": "activity/go_to_class" },
+		"thursday":  { "09:00": "activity/go_to_class" },
+		"friday":    { "09:00": "activity/go_to_class" }
+	}
+}
