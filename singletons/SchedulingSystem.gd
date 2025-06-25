@@ -18,9 +18,7 @@ func connect_to_time_system() -> void:
 
 func _load_all_schedule_layers(path: String) -> void:
 	var dir = DirAccess.open(path)
-	if not dir:
-		printerr("Could not open schedule definitions directory: ", path)
-		return
+	if not dir: return
 	dir.list_dir_begin()
 	var item_name = dir.get_next()
 	while item_name != "":
@@ -45,25 +43,19 @@ func _on_time_updated(date_info: Dictionary) -> void:
 		if not is_instance_valid(logic_node): continue
 		var schedule_comp = logic_node.get_component("ScheduleComponent")
 		if not schedule_comp: continue
-			
 		var potential_activities = _get_potential_activities_for_entity(schedule_comp, date_info)
 		if potential_activities.is_empty(): continue
-			
 		var final_activity_data = ConflictResolutionSystem.resolve(potential_activities)
 		if final_activity_data.is_empty(): continue
-			
 		_execute_activity(entity, final_activity_data)
 
 func _get_potential_activities_for_entity(schedule_comp: ScheduleComponent, date_info: Dictionary) -> Array[Dictionary]:
 	var activities: Array[Dictionary] = []
 	for layer_id in schedule_comp.schedule_layer_ids:
 		var schedule_data = _schedule_layers.get(layer_id)
-		if schedule_data:
-			activities.append_array(_extract_activities_from_schedule_data(schedule_data, date_info))
-	if not schedule_comp.weekly_schedule.is_empty() or not schedule_comp.specific_events.is_empty():
-		var direct_schedule_data = { "weekly_schedule": schedule_comp.weekly_schedule,
-			"specific_events": schedule_comp.specific_events, "priority": schedule_comp.priority }
-		activities.append_array(_extract_activities_from_schedule_data(direct_schedule_data, date_info))
+		if schedule_data: activities.append_array(_extract_activities_from_schedule_data(schedule_data, date_info))
+	var direct_schedule_data = { "weekly_schedule": schedule_comp.weekly_schedule, "specific_events": schedule_comp.specific_events, "priority": schedule_comp.priority }
+	activities.append_array(_extract_activities_from_schedule_data(direct_schedule_data, date_info))
 	return activities
 
 func _extract_activities_from_schedule_data(schedule_data: Dictionary, date_info: Dictionary) -> Array[Dictionary]:
@@ -82,29 +74,30 @@ func _extract_activities_from_schedule_data(schedule_data: Dictionary, date_info
 func _execute_activity(entity: Node, activity_data: Dictionary) -> void:
 	var state_to_enter = activity_data.get("state")
 	if not state_to_enter: return
-
 	var state_comp = entity.get_node("EntityLogic").get_component("StateComponent")
 	if not state_comp:
 		printerr("Scheduled entity '%s' is missing a StateComponent." % entity.name)
 		return
-		
 	if state_comp.get_current_state_id() == state_to_enter: return
 	
 	var state_data = StateRegistry.get_state_definition(state_to_enter)
 	var required_tag = state_data.get("tag_to_apply_on_enter")
-	
 	var tag_comp = entity.get_node("EntityLogic").get_component("TagComponent")
-	if required_tag and tag_comp and tag_comp.has_tag(required_tag):
-		return
+	if required_tag and tag_comp and tag_comp.has_tag(required_tag): return
 
 	var context = activity_data.duplicate(); context.erase("state"); context.erase("priority")
 	state_comp.push_state(state_to_enter, context)
 	print("[SCHEDULER] Entity '%s' new activity: '%s'" % [entity.name, state_to_enter])
 
-	if required_tag and tag_comp:
-		EntityManager.add_tag_to_entity(entity.name, required_tag)
+	if required_tag and tag_comp: EntityManager.add_tag_to_entity(entity.name, required_tag)
 		
 	if state_data.has("on_enter_spawn"):
 		var spawn_list_id = state_data["on_enter_spawn"]
 		print("State change on '%s' is triggering spawn list: '%s'" % [entity.name, spawn_list_id])
 		if entity is Node3D: SpawningSystem.execute_spawn_list(spawn_list_id, entity.global_position)
+		
+	# --- NEW DESPAWNING LOGIC ---
+	if state_data.has("on_enter_despawn_by_tag"):
+		var tag_to_despawn = state_data["on_enter_despawn_by_tag"]
+		print("State change on '%s' is triggering despawn for tag: '%s'" % [entity.name, tag_to_despawn])
+		EntityManager.destroy_all_with_tag(tag_to_despawn)
