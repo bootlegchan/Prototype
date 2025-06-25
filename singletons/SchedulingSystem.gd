@@ -6,6 +6,7 @@ func _ready() -> void:
 	_schedule_layers.clear()
 	_load_all_schedule_layers(Config.SCHEDULES_DEFINITION_PATH)
 	print("Loaded %s schedule layer definitions." % _schedule_layers.size())
+	
 	if get_node_or_null("/root/TimeSystem"):
 		TimeSystem.time_updated.connect(_on_time_updated)
 	else:
@@ -18,8 +19,7 @@ func connect_to_time_system() -> void:
 
 func _load_all_schedule_layers(path: String) -> void:
 	var dir = DirAccess.open(path)
-	if not dir:
-		return
+	if not dir: return
 	dir.list_dir_begin()
 	var item_name = dir.get_next()
 	while item_name != "":
@@ -39,22 +39,17 @@ func _load_all_schedule_layers(path: String) -> void:
 func _on_time_updated(date_info: Dictionary) -> void:
 	var entities = get_tree().get_nodes_in_group("has_schedule")
 	for entity in entities:
-		if not is_instance_valid(entity):
-			continue
+		if not is_instance_valid(entity): continue
 		var logic_node = entity.get_node("EntityLogic")
-		if not is_instance_valid(logic_node):
-			continue
+		if not is_instance_valid(logic_node): continue
 		var schedule_comp = logic_node.get_component("ScheduleComponent")
-		if not schedule_comp:
-			continue
+		if not schedule_comp: continue
 			
 		var potential_activities = _get_potential_activities_for_entity(schedule_comp, date_info)
-		if potential_activities.is_empty():
-			continue
+		if potential_activities.is_empty(): continue
 			
 		var final_activity_data = ConflictResolutionSystem.resolve(potential_activities)
-		if final_activity_data.is_empty():
-			continue
+		if final_activity_data.is_empty(): continue
 			
 		_execute_activity(entity, final_activity_data, date_info)
 
@@ -97,8 +92,9 @@ func _execute_activity(entity: Node, activity_data: Dictionary, date_info: Dicti
 	if not state_to_enter:
 		return
 
+	# --- THIS IS THE FIX ---
+	# We first handle the state change for entities that have a StateComponent.
 	var state_comp = entity.get_node("EntityLogic").get_component("StateComponent")
-	# Character schedules change state.
 	if state_comp and state_comp.get_current_state_id() != state_to_enter:
 		var context = activity_data.duplicate()
 		context.erase("state")
@@ -106,10 +102,11 @@ func _execute_activity(entity: Node, activity_data: Dictionary, date_info: Dicti
 		state_comp.push_state(state_to_enter, context)
 		print("[SCHEDULER] '%s' new activity: '%s'" % [entity.name, state_to_enter])
 
-	# Location schedules can trigger spawns.
+	# Then, INDEPENDENTLY, we check if the triggered state definition has an `on_enter_spawn` event.
+	# This works for both characters and locations, regardless of whether they have a StateComponent.
 	var state_data = StateRegistry.get_state_definition(state_to_enter)
 	if state_data.has("on_enter_spawn"):
 		var spawn_list_id = state_data["on_enter_spawn"]
-		print("Scheduled event on '%s' triggering spawn list: '%s'" % [entity.name, spawn_list_id])
+		print("Scheduled event '%s' on '%s' is triggering spawn list: '%s'" % [state_to_enter, entity.name, spawn_list_id])
 		if entity is Node3D:
 			SpawningSystem.execute_spawn_list(spawn_list_id, entity.global_position)
