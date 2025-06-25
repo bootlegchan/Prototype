@@ -1,5 +1,35 @@
 {
-	"description": "Defines the structure of the game's calendar and world events.",
-	"months": [ ... ],
-	"holidays_and_events": [ ... ]
+	"description": "Defines the structure of the game's calender, including weekdays and world events.",
+	
+	"days_of_week": [
+		"Monday",
+		"Tuesday",
+		"Wednesday",
+		"Thursday",
+		"Friday",
+		"Saturday",
+		"Sunday"
+	],
+	
+	"months": [
+		{ "name": "January",   "length": 31, "season": "Winter" },
+		{ "name": "February",  "length": 28, "season": "Winter" },
+		{ "name": "March",     "length": 31, "season": "Spring" },
+		{ "name": "April",     "length": 30, "season": "Spring" },
+		{ "name": "May",       "length": 31, "season": "Spring" },
+		{ "name": "June",      "length": 30, "season": "Summer" },
+		{ "name": "July",      "length": 31, "season": "Summer" },
+		{ "name": "August",    "length": 31, "season": "Summer" },
+		{ "name": "September", "length": 30, "season": "Autumn" },
+		{ "name": "October",   "length": 31, "season": "Autumn" },
+		{ "name": "November",  "length": 30, "season": "Autumn" },
+		{ "name": "December",  "length": 31, "season": "Winter" }
+	],
+	
+	"holidays_and_events": [
+		{ "name": "New Year's Day", "month": "January", "day": 1 },
+		{ "name": "Founder's Festival", "month": "June", "day": 21 },
+		{ "name": "Harvest Gala", "month": "October", "day": 31 },
+		{ "name": "Winter Solstice Celebration", "month": "December", "day": 25 }
+	]
 }

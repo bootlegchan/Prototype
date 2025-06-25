@@ -3,12 +3,13 @@ extends Node
 var _schedules: Dictionary = {}
 
 func _ready() -> void:
+	_schedules.clear()
 	_load_all_schedules(Config.SCHEDULES_DEFINITION_PATH)
-	# Check if TimeSystem is available before connecting, to avoid startup errors
+	print("Loaded %s schedule definitions." % _schedules.size()) # Moved here
+
 	if get_node_or_null("/root/TimeSystem"):
 		TimeSystem.current_minute_changed.connect(_on_time_changed)
 	else:
-		# If it's not ready, defer the connection
 		call_deferred("connect_to_time_system")
 	print("SchedulingSystem ready.")
 
@@ -36,8 +37,7 @@ func _load_all_schedules(path: String) -> void:
 			var json_data = JSON.parse_string(file.get_as_text())
 			_schedules[definition_id] = json_data
 		item_name = dir.get_next()
-	print("Loaded %s schedule definitions." % _schedules.size())
-
+	# The print statement is removed from here.
 
 func _on_time_changed(hour: int, minute: int) -> void:
 	var entities = get_tree().get_nodes_in_group("has_schedule")
@@ -77,12 +77,10 @@ func _get_potential_activities(layer_ids: Array[String]) -> Array[Dictionary]:
 		if not schedule_data:
 			continue
 
-		# Check specific one-off events
 		for event in schedule_data.get("specific_events", []):
 			if event.get("day") == date_info.day and event.get("month") == date_info.month_name and event.get("time") == time_key:
 				activities.append({"activity_id": event["activity"], "priority": schedule_data.get("priority", 0)})
 		
-		# Then check the weekly schedule
 		var weekly_schedule = schedule_data.get("weekly_schedule", {})
 		var day_name = date_info.day_of_week_name.to_lower()
 		if weekly_schedule.has(day_name) and weekly_schedule[day_name].has(time_key):
