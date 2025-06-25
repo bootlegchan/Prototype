@@ -18,7 +18,8 @@ func connect_to_time_system() -> void:
 
 func _load_all_schedule_layers(path: String) -> void:
 	var dir = DirAccess.open(path)
-	if not dir: return
+	if not dir:
+		return
 	dir.list_dir_begin()
 	var item_name = dir.get_next()
 	while item_name != "":
@@ -38,17 +39,22 @@ func _load_all_schedule_layers(path: String) -> void:
 func _on_time_updated(date_info: Dictionary) -> void:
 	var entities = get_tree().get_nodes_in_group("has_schedule")
 	for entity in entities:
-		if not is_instance_valid(entity): continue
+		if not is_instance_valid(entity):
+			continue
 		var logic_node = entity.get_node("EntityLogic")
-		if not is_instance_valid(logic_node): continue
+		if not is_instance_valid(logic_node):
+			continue
 		var schedule_comp = logic_node.get_component("ScheduleComponent")
-		if not schedule_comp: continue
+		if not schedule_comp:
+			continue
 			
 		var potential_activities = _get_potential_activities_for_entity(schedule_comp, date_info)
-		if potential_activities.is_empty(): continue
+		if potential_activities.is_empty():
+			continue
 			
 		var final_activity_data = ConflictResolutionSystem.resolve(potential_activities)
-		if final_activity_data.is_empty(): continue
+		if final_activity_data.is_empty():
+			continue
 			
 		_execute_activity(entity, final_activity_data, date_info)
 
@@ -56,14 +62,13 @@ func _get_potential_activities_for_entity(schedule_comp: ScheduleComponent, date
 	var activities: Array[Dictionary] = []
 	
 	# Case 1: Character with layered schedules
-	if not schedule_comp.schedule_layer_ids.is_empty():
-		for layer_id in schedule_comp.schedule_layer_ids:
-			var schedule_data = _schedule_layers.get(layer_id)
-			if schedule_data:
-				activities.append_array(_extract_activities_from_schedule_data(schedule_data, date_info))
+	for layer_id in schedule_comp.schedule_layer_ids:
+		var schedule_data = _schedule_layers.get(layer_id)
+		if schedule_data:
+			activities.append_array(_extract_activities_from_schedule_data(schedule_data, date_info))
+	
 	# Case 2: Location with a direct schedule
-	elif not schedule_comp.weekly_schedule.is_empty() or not schedule_comp.specific_events.is_empty():
-		activities.append_array(_extract_activities_from_schedule_data(schedule_comp, date_info))
+	activities.append_array(_extract_activities_from_schedule_data(schedule_comp, date_info))
 	
 	return activities
 
@@ -74,25 +79,30 @@ func _extract_activities_from_schedule_data(schedule_data, date_info: Dictionary
 	
 	for event in schedule_data.get("specific_events", []):
 		if event.get("day") == date_info.day and event.get("month") == date_info.month_name and event.get("time") == time_key:
-			var activity_data = event.get("activity", {}).duplicate(); activity_data["priority"] = priority
+			var activity_data = event.get("activity", {}).duplicate()
+			activity_data["priority"] = priority
 			found_activities.append(activity_data)
 			
 	var weekly_schedule = schedule_data.get("weekly_schedule", {})
 	var day_name = date_info.day_of_week_name.to_lower()
 	if weekly_schedule.has(day_name) and weekly_schedule[day_name].has(time_key):
-		var activity_data = weekly_schedule[day_name][time_key].duplicate(); activity_data["priority"] = priority
+		var activity_data = weekly_schedule[day_name][time_key].duplicate()
+		activity_data["priority"] = priority
 		found_activities.append(activity_data)
 		 
 	return found_activities
 
 func _execute_activity(entity: Node, activity_data: Dictionary, date_info: Dictionary) -> void:
 	var state_to_enter = activity_data.get("state")
-	if not state_to_enter: return
+	if not state_to_enter:
+		return
 
 	var state_comp = entity.get_node("EntityLogic").get_component("StateComponent")
 	# Character schedules change state.
 	if state_comp and state_comp.get_current_state_id() != state_to_enter:
-		var context = activity_data.duplicate(); context.erase("state"); context.erase("priority")
+		var context = activity_data.duplicate()
+		context.erase("state")
+		context.erase("priority")
 		state_comp.push_state(state_to_enter, context)
 		print("[SCHEDULER] '%s' new activity: '%s'" % [entity.name, state_to_enter])
 
