@@ -12,31 +12,43 @@ func _ready() -> void:
 func load_world_state() -> void:
 	var file = FileAccess.open(WORLD_STATE_PATH, FileAccess.READ)
 	if not file:
-		printerr("FATAL: Could not open world state file: ", WORLD_STATE_PATH)
+		printerr("FATAL: Could not open world state file at: ", WORLD_STATE_PATH)
 		return
+		
 	var world_data = JSON.parse_string(file.get_as_text())
 	var entities_to_load = world_data.get("entities", [])
+	
 	_entity_registry.clear()
+	
 	for entity_record in entities_to_load:
 		var instance_id = entity_record["instance_id"]
 		_entity_registry[instance_id] = {
 			"instance_id": instance_id,
 			"definition_id": entity_record["definition_id"],
 			"position": Vector3(
-				entity_record["position"].get("x",0.0), entity_record["position"].get("y",0.0), entity_record["position"].get("z",0.0)
+				entity_record["position"].get("x", 0.0),
+				entity_record["position"].get("y", 0.0),
+				entity_record["position"].get("z", 0.0)
 			),
-			"rotation": Vector3.ZERO, "component_data": entity_record.get("component_data", {})
+			"rotation": Vector3.ZERO,
+			"component_data": entity_record.get("component_data", {})
 		}
 		stage_entity(instance_id)
+
 	print("Loaded and staged %s persistent entities from world state." % _entity_registry.size())
 
 func request_new_entity(definition_id: String, position: Vector3) -> String:
 	var base_name = definition_id.get_slice("/", -1)
 	var instance_id = "%s_dyn_%s" % [base_name, str(_get_next_uid())]
+	
 	_entity_registry[instance_id] = {
-		"instance_id": instance_id, "definition_id": definition_id, "position": position,
-		"rotation": Vector3.ZERO, "component_data": {}
+		"instance_id": instance_id,
+		"definition_id": definition_id,
+		"position": position,
+		"rotation": Vector3.ZERO,
+		"component_data": {}
 	}
+	
 	EventSystem.emit_event("entity_record_created", {"instance_id": instance_id})
 	stage_entity(instance_id)
 	return instance_id
@@ -45,7 +57,8 @@ func stage_entity(instance_id: String) -> void:
 	if not _entity_registry.has(instance_id): return
 	var entity_data = _entity_registry[instance_id]
 	var entity_node = EntityFactory.create_entity_node(
-		entity_data["definition_id"], entity_data["position"],
+		entity_data["definition_id"],
+		entity_data["position"],
 		entity_data.get("component_data", {})
 	)
 	if is_instance_valid(entity_node):
@@ -78,17 +91,19 @@ func unstage_entity(instance_id: String) -> void:
 
 func destroy_entity_permanently(instance_id: String) -> void:
 	if not _entity_registry.has(instance_id): return
-	print("Permanently destroying entity '%s'..." % instance_id)
 	unstage_entity(instance_id)
 	if _entity_registry.has(instance_id): _entity_registry.erase(instance_id)
 	EventSystem.emit_event("entity_destroyed", {"instance_id": instance_id})
-	print("Entity record for '%s' destroyed." % instance_id)
 
-# --- NEW HELPER FUNCTION ---
 func add_tag_to_entity(instance_id: String, tag_id: String) -> void:
 	var component = get_entity_component(instance_id, "TagComponent")
 	if component:
 		component.add_tag(tag_id)
+
+func set_entity_state(instance_id: String, state_id: String) -> void:
+	var state_comp = get_entity_component(instance_id, "StateComponent")
+	if state_comp:
+		state_comp.push_state(state_id)
 
 func get_entity_component(instance_id: String, component_name: String) -> Node:
 	var node = get_node_from_instance_id(instance_id)
