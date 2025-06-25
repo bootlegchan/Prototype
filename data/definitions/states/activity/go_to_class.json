@@ -1,0 +1,6 @@
+{
+	"description": "Traveling to and attending a scheduled class.",
+	"can_move": true,
+	"speed": 3.0,
+	"interruptible": false
+}
