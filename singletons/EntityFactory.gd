@@ -3,14 +3,12 @@ extends Node
 var _entity_definitions: Dictionary = {}
 var _component_map: Dictionary = {}
 
-
 func _ready() -> void:
 	_entity_definitions.clear()
 	_component_map.clear()
 	_recursive_load_definitions(Config.ENTITY_DEFINITION_PATH)
 	print("Loaded %s entity definitions." % _entity_definitions.size())
 	_register_all_components(Config.COMPONENT_PATH)
-
 
 func create_entity_node(definition_id: String, position: Vector3, saved_component_data: Dictionary = {}) -> Node:
 	if not _entity_definitions.has(definition_id):
@@ -63,7 +61,6 @@ func create_entity_node(definition_id: String, position: Vector3, saved_componen
 			if component_node and component_node.has_method("initialize"):
 				var entity_name = definition.get("name", "UnnamedEntity")
 				var initial_data = components_from_def.get(component_name, {}).duplicate()
-				
 				if saved_component_data.has(component_name):
 					initial_data["saved_data"] = saved_component_data[component_name]
 				
@@ -72,36 +69,24 @@ func create_entity_node(definition_id: String, position: Vector3, saved_componen
 	print("Entity node created for definition '%s'." % definition_id)
 	return physics_body
 	
-
 func create_and_initialize_component(component_name: String, initial_data: Dictionary, entity_name: String) -> Node:
 	if not _component_map.has(component_name):
 		printerr("Component '%s' is not registered." % component_name)
 		return null
-		
 	var component_node = Node.new()
 	component_node.name = component_name
 	component_node.set_script(_component_map[component_name])
-	
 	_initialize_component(component_node, component_name, initial_data.duplicate(), entity_name)
 	return component_node
 
-
 func _initialize_component(component_node: Node, component_name: String, initial_data: Dictionary, entity_name: String) -> void:
 	var data_for_init
-	
 	match component_name:
-		"StateComponent", "ScheduleComponent", "InventoryComponent", "LocationComponent":
+		"StateComponent", "InventoryComponent", "LocationComponent", "ScheduleComponent":
 			data_for_init = [entity_name, initial_data]
 		
 		"ParentContextComponent":
-			# --- THIS IS THE FIX ---
-			# This component only ever takes its own direct data block, whether it's
-			# fresh or being re-hydrated. It doesn't need the entity name.
-			# We check for saved_data and pass the inner dictionary if it exists.
-			if initial_data.has("saved_data"):
-				data_for_init = [initial_data["saved_data"]]
-			else:
-				data_for_init = [initial_data]
+			data_for_init = [initial_data]
 
 		"TagComponent":
 			if initial_data.has("saved_data"):
@@ -112,21 +97,16 @@ func _initialize_component(component_node: Node, component_name: String, initial
 				for tag_id in tags_to_resolve:
 					if TagRegistry.is_tag_defined(tag_id):
 						resolved_tags[tag_id] = TagRegistry.get_tag_definition(tag_id)
-					else:
-						push_warning("Undefined tag '%s' for entity '%s'." % [tag_id, entity_name])
 				data_for_init = [resolved_tags]
 		
-		_: # Default handler for ItemComponent, VisualComponent, etc.
+		_:
 			data_for_init = [initial_data]
 	
 	Callable(component_node, "initialize").callv(data_for_init)
 
-
 func _recursive_load_definitions(path: String) -> void:
 	var dir = DirAccess.open(path)
-	if not dir:
-		printerr("Could not open definitions directory: ", path)
-		return
+	if not dir: return
 	dir.list_dir_begin()
 	var item_name = dir.get_next()
 	while item_name != "":
@@ -144,12 +124,9 @@ func _recursive_load_definitions(path: String) -> void:
 			_entity_definitions[definition_id] = json_data
 		item_name = dir.get_next()
 
-
 func _register_all_components(path: String) -> void:
 	var dir = DirAccess.open(path)
-	if not dir:
-		printerr("Components directory not found: ", path)
-		return
+	if not dir: return
 	dir.list_dir_begin()
 	var file_name = dir.get_next()
 	while file_name != "":
@@ -160,7 +137,6 @@ func _register_all_components(path: String) -> void:
 				_component_map[component_name] = script
 		file_name = dir.get_next()
 	print("Registered %s components: " % _component_map.size(), _component_map.keys())
-
 
 func _add_collision_shape_to_entity(physics_body: Node3D, shape_type: String) -> void:
 	var collision_shape_node = CollisionShape3D.new()
