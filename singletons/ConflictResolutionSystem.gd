@@ -1,8 +1,12 @@
 extends Node
 
+# This system resolves scheduling conflicts.
+# It returns the full dictionary of the winning activity.
 func resolve(potential_activities: Array[Dictionary]) -> Dictionary:
 	if potential_activities.is_empty():
+		# --- FIX: Return an empty dictionary if there are no activities ---
 		return {}
+		
 	if potential_activities.size() == 1:
 		return potential_activities[0]
 

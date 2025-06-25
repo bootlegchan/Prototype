@@ -19,11 +19,8 @@ func connect_to_time_system() -> void:
 func _load_all_schedule_layers(path: String) -> void:
 	var dir = DirAccess.open(path)
 	if not dir:
-		# The function must still execute, even if the directory is missing.
-		# The error is printed, and the process continues.
-		printerr("Schedule layers directory not found at: ", path)
+		printerr("Could not open schedule definitions directory: ", path)
 		return
-		
 	dir.list_dir_begin()
 	var item_name = dir.get_next()
 	while item_name != "":
