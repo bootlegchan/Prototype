@@ -1,75 +1,43 @@
 extends Node3D
 
-var mimic_instance_id: String
+var player_id: String = "player_character"
+var barrel_id: String = "suspicious_barrel"
 
 func _ready() -> void:
-	print("Main scene ready. Testing dynamic component modification...")
-	call_deferred("run_test")
+	print("Main scene ready. World state loaded. Starting complex test sequence...")
+	TimeSystem.current_hour = 8
+	TimeSystem.current_minute = 0
+	# Wait for the scheduled event to fire.
+	# The ScheduleComponent connects to the minute_changed signal.
+	# We will wait for the barrel to become active, then interact.
+	var timer = get_tree().create_timer(4.0) # ~4 minutes of game time
+	timer.timeout.connect(run_interaction_test)
 
-
-func run_test() -> void:
-	# --- Phase 1: Spawn a normal barrel ---
-	print("\n--- Phase 1: Spawning Barrel ---")
-	mimic_instance_id = EntityManager.request_new_entity("scenery/props/barrel", Vector3.ZERO)
+func run_interaction_test() -> void:
+	print("\n--- Running Interaction Test ---")
 	
-	# Wait a frame to ensure the barrel is fully in the tree before modifying it.
-	call_deferred("transform_barrel_into_mimic")
-
-
-func transform_barrel_into_mimic() -> void:
-	# --- Phase 2: Dynamically turn it into a mimic ---
-	print("\n--- Phase 2: Transforming Barrel into a Mimic ---")
+	# 1. Simulate player interacting with the barrel
+	print("\n[Phase 1: Player interacts with the 'active' barrel]")
+	EntityManager.add_tag_to_entity(player_id, "status/cursed")
 	
-	# Add a StateComponent so it can have states.
-	EntityManager.add_component_to_entity(mimic_instance_id, "StateComponent", {"initial_state": "common/sleeping"})
+	# 2. Unstage the player to test persistence
+	print("\n[Phase 2: Unstaging player]")
+	EntityManager.unstage_entity(player_id)
 	
-	# Add a hostile tag.
-	# Note: This currently overwrites existing tags. A more robust TagComponent
-	# would have an `add_tags` method. For this test, it's fine.
-	EntityManager.add_component_to_entity(mimic_instance_id, "TagComponent", {"tags": ["roles/hostile"]})
+	# 3. Stage the player again
+	print("\n[Phase 3: Staging player]")
+	EntityManager.stage_entity(player_id)
 	
-	# Wait a moment, then unstage it.
-	var timer = get_tree().create_timer(2.0)
-	timer.timeout.connect(_on_despawn_timer_timeout)
+	call_deferred("verify_player_state")
 
 
-func _on_despawn_timer_timeout() -> void:
-	# --- Phase 3: Unstage the mimic barrel ---
-	print("\n--- Phase 3: Unstaging Mimic Barrel ---")
-	EntityManager.unstage_entity(mimic_instance_id)
+func verify_player_state() -> void:
+	print("\n[Phase 4: Verifying player's tags after respawn]")
+	var player_tag_comp = EntityManager.get_entity_component(player_id, "TagComponent")
 	
-	# Wait a moment, then bring it back.
-	var timer = get_tree().create_timer(2.0)
-	timer.timeout.connect(_on_respawn_timer_timeout)
-
-
-func _on_respawn_timer_timeout() -> void:
-	# --- Phase 4: Stage the mimic barrel again ---
-	print("\n--- Phase 4: Staging Mimic Barrel Again ---")
-	EntityManager.stage_entity(mimic_instance_id)
-	
-	# Verify it came back with its new components.
-	call_deferred("verify_mimic_state")
-
-
-func verify_mimic_state() -> void:
-	var mimic_node = EntityManager.get_node_from_instance_id(mimic_instance_id)
-	if not is_instance_valid(mimic_node):
-		print("VERIFICATION FAILED: Mimic node is not valid.")
-		return
+	if player_tag_comp and player_tag_comp.has_tag("status/cursed"):
+		print("VERIFICATION PASSED: Player correctly has the 'cursed' tag.")
+	else:
+		print("VERIFICATION FAILED: Player is missing the 'cursed' tag after being restaged.")
 		
-	var logic_node = mimic_node.get_node("EntityLogic")
-	if logic_node:
-		var state_comp = logic_node.get_component("StateComponent")
-		var tag_comp = logic_node.get_component("TagComponent")
-		
-		if state_comp and tag_comp:
-			print("\nVERIFICATION PASSED: Restaged entity has both StateComponent and TagComponent.")
-			if tag_comp.has_tag("roles/hostile"):
-				print("VERIFICATION PASSED: Restaged entity correctly has the 'hostile' tag.")
-			else:
-				print("VERIFICATION FAILED: Restaged entity is missing the 'hostile' tag.")
-		else:
-			print("VERIFICATION FAILED: Restaged entity is missing dynamically added components.")
-	
-	print("\n--- Dynamic Modification Test Complete ---")
+	print("\n--- Complex Test Complete ---")

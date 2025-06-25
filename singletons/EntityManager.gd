@@ -1,67 +1,69 @@
 extends Node
 
+const WORLD_STATE_PATH = "res://data/world_state.json"
+
 var _entity_registry: Dictionary = {}
 var _node_to_instance_id_map: Dictionary = {}
 var _next_uid: int = 0
 
+func _ready() -> void:
+	load_world_state()
 
-# --- Public API ---
+func load_world_state() -> void:
+	var file = FileAccess.open(WORLD_STATE_PATH, FileAccess.READ)
+	if not file:
+		printerr("FATAL: Could not open world state file: ", WORLD_STATE_PATH)
+		return
+	var world_data = JSON.parse_string(file.get_as_text())
+	var entities_to_load = world_data.get("entities", [])
+	_entity_registry.clear()
+	for entity_record in entities_to_load:
+		var instance_id = entity_record["instance_id"]
+		_entity_registry[instance_id] = {
+			"instance_id": instance_id,
+			"definition_id": entity_record["definition_id"],
+			"position": Vector3(
+				entity_record["position"].get("x",0.0), entity_record["position"].get("y",0.0), entity_record["position"].get("z",0.0)
+			),
+			"rotation": Vector3.ZERO, "component_data": entity_record.get("component_data", {})
+		}
+		stage_entity(instance_id)
+	print("Loaded and staged %s persistent entities from world state." % _entity_registry.size())
 
 func request_new_entity(definition_id: String, position: Vector3) -> String:
 	var base_name = definition_id.get_slice("/", -1)
-	var instance_id = "%s_%s" % [base_name, str(_get_next_uid())]
-	
+	var instance_id = "%s_dyn_%s" % [base_name, str(_get_next_uid())]
 	_entity_registry[instance_id] = {
-		"instance_id": instance_id,
-		"definition_id": definition_id,
-		"position": position,
-		"rotation": Vector3.ZERO,
-		"component_data": {}
+		"instance_id": instance_id, "definition_id": definition_id, "position": position,
+		"rotation": Vector3.ZERO, "component_data": {}
 	}
-	
 	EventSystem.emit_event("entity_record_created", {"instance_id": instance_id})
 	stage_entity(instance_id)
 	return instance_id
 
-
 func stage_entity(instance_id: String) -> void:
-	if not _entity_registry.has(instance_id):
-		printerr("Cannot stage entity: Unknown instance ID '", instance_id, "'")
-		return
-
+	if not _entity_registry.has(instance_id): return
 	var entity_data = _entity_registry[instance_id]
-	
 	var entity_node = EntityFactory.create_entity_node(
-		entity_data["definition_id"],
-		entity_data["position"],
+		entity_data["definition_id"], entity_data["position"],
 		entity_data.get("component_data", {})
 	)
-	
 	if is_instance_valid(entity_node):
 		_node_to_instance_id_map[entity_node] = instance_id
 		entity_node.name = instance_id
-		
 		if entity_node is Node3D and entity_data.has("rotation"):
 			entity_node.rotation_degrees = entity_data["rotation"]
-
 		get_tree().current_scene.add_child(entity_node)
 		EventSystem.emit_event("entity_staged", {"instance_id": instance_id, "node": entity_node})
 
-
 func unstage_entity(instance_id: String) -> void:
 	var entity_node = get_node_from_instance_id(instance_id)
-	if not is_instance_valid(entity_node):
-		printerr("Cannot unstage entity: Node for instance '%s' not found." % instance_id)
-		return
-		
+	if not is_instance_valid(entity_node): return
 	print("Unstaging entity '%s'..." % instance_id)
-
 	var entity_data = _entity_registry[instance_id]
-	
 	if entity_node is Node3D:
 		entity_data["position"] = entity_node.position
 		entity_data["rotation"] = entity_node.rotation_degrees
-
 	entity_data["component_data"].clear()
 	var logic_node = entity_node.get_node_or_null("EntityLogic")
 	if logic_node:
@@ -69,36 +71,36 @@ func unstage_entity(instance_id: String) -> void:
 			entity_data["component_data"][component.name] = {} 
 			if component.has_method("get_persistent_data"):
 				entity_data["component_data"][component.name] = component.get_persistent_data()
-
 	_node_to_instance_id_map.erase(entity_node)
 	entity_node.queue_free()
-	
 	EventSystem.emit_event("entity_unstaged", {"instance_id": instance_id})
-	print("Entity '%s' unstaged. Data saved: %s" % [instance_id, entity_data])
+	print("Entity '%s' unstaged. Data preserved." % instance_id)
 
+func destroy_entity_permanently(instance_id: String) -> void:
+	if not _entity_registry.has(instance_id): return
+	print("Permanently destroying entity '%s'..." % instance_id)
+	unstage_entity(instance_id)
+	if _entity_registry.has(instance_id): _entity_registry.erase(instance_id)
+	EventSystem.emit_event("entity_destroyed", {"instance_id": instance_id})
+	print("Entity record for '%s' destroyed." % instance_id)
 
-func add_component_to_entity(instance_id: String, component_name: String, initial_data: Dictionary = {}) -> void:
-	var entity_node = get_node_from_instance_id(instance_id)
-	if not is_instance_valid(entity_node):
-		printerr("Cannot add component: Node for instance '%s' not found." % instance_id)
-		return
-		
-	var logic_node = entity_node.get_node_or_null("EntityLogic")
-	if logic_node:
-		# Use the factory to create and initialize the component fully before adding it.
-		var new_component = EntityFactory.create_and_initialize_component(component_name, initial_data, entity_node.name)
-		if is_instance_valid(new_component):
-			# Now add the fully ready component, which will replace the old one.
-			logic_node.add_component(component_name, new_component)
-			print("Dynamically added/replaced component '%s' on entity '%s'" % [component_name, instance_id])
+# --- NEW HELPER FUNCTION ---
+func add_tag_to_entity(instance_id: String, tag_id: String) -> void:
+	var component = get_entity_component(instance_id, "TagComponent")
+	if component:
+		component.add_tag(tag_id)
 
+func get_entity_component(instance_id: String, component_name: String) -> Node:
+	var node = get_node_from_instance_id(instance_id)
+	if is_instance_valid(node):
+		var logic_node = node.get_node_or_null("EntityLogic")
+		if is_instance_valid(logic_node): return logic_node.get_component(component_name)
+	return null
 
 func get_node_from_instance_id(instance_id: String) -> Node:
 	for node in _node_to_instance_id_map:
-		if _node_to_instance_id_map[node] == instance_id:
-			return node
+		if _node_to_instance_id_map[node] == instance_id: return node
 	return null
-
 
 func _get_next_uid() -> int:
 	_next_uid += 1

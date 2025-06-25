@@ -5,30 +5,21 @@ var tags: Dictionary = {}
 
 func initialize(data: Dictionary) -> void:
 	tags.clear()
-	
 	if data.has("saved_data"):
-		# Re-hydrating from a saved state.
-		var saved_data = data["saved_data"]
-		tags = saved_data.get("tags", {})
+		tags = data["saved_data"].get("tags", {})
 		print("TagComponent re-hydrated with tags: %s" % str(tags.keys()))
-	elif data.has("tags"):
-		# Initializing fresh from a list of tag IDs (dynamic add).
-		var tags_to_resolve = data.get("tags", [])
-		for tag_id in tags_to_resolve:
-			if TagRegistry.is_tag_defined(tag_id):
-				tags[tag_id] = TagRegistry.get_tag_definition(tag_id)
-			else:
-				push_warning("Undefined tag '%s' in dynamic TagComponent." % tag_id)
-		print("TagComponent initialized dynamically with tags: %s" % str(tags.keys()))
 	else:
-		# Initializing fresh from a resolved dictionary (factory creation).
 		tags = data
 		print("TagComponent initialized fresh with tags: %s" % str(tags.keys()))
-
 
 func get_persistent_data() -> Dictionary:
 	return { "tags": tags }
 
+# --- NEW FUNCTION ---
+func add_tag(tag_id: String) -> void:
+	if not has_tag(tag_id) and TagRegistry.is_tag_defined(tag_id):
+		tags[tag_id] = TagRegistry.get_tag_definition(tag_id)
+		print("Dynamically added tag '%s'." % tag_id)
 
 func has_tag(tag_id: String) -> bool:
 	return tags.has(tag_id)

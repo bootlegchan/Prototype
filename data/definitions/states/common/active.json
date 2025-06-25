@@ -1,0 +1,4 @@
+{
+	"description": "The entity is active and may perform special actions.",
+	"on_enter_spawn": "monsters/slime_ambush"
+}

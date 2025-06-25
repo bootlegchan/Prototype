@@ -1,0 +1,6 @@
+{
+	"description": "A single slime appears.",
+	"spawns": [
+		{ "definition_id": "monsters/slime", "position": { "x": 1, "y": 0, "z": 1 } }
+	]
+}
