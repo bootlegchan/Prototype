@@ -1,0 +1,6 @@
+{
+	"description": "Traveling to a specific target location.",
+	"can_move": true,
+	"speed": 3.0,
+	"interruptible": true
+}

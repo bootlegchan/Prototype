@@ -6,7 +6,6 @@ func _ready() -> void:
 	_schedules.clear()
 	_load_all_schedules(Config.SCHEDULES_DEFINITION_PATH)
 	print("Loaded %s schedule definitions." % _schedules.size())
-	
 	if get_node_or_null("/root/TimeSystem"):
 		TimeSystem.time_updated.connect(_on_time_updated)
 	else:
@@ -43,11 +42,9 @@ func _on_time_updated(date_info: Dictionary) -> void:
 	for entity in entities:
 		if not is_instance_valid(entity):
 			continue
-		
 		var logic_node = entity.get_node("EntityLogic")
 		if not is_instance_valid(logic_node):
 			continue
-			
 		var schedule_comp = logic_node.get_component("ScheduleComponent")
 		if not schedule_comp:
 			continue
@@ -56,33 +53,39 @@ func _on_time_updated(date_info: Dictionary) -> void:
 		if potential_activities.is_empty():
 			continue
 			
-		var final_activity_id = ConflictResolutionSystem.resolve(potential_activities)
+		var final_activity_data = ConflictResolutionSystem.resolve(potential_activities)
+		if final_activity_data.is_empty():
+			continue
+			
+		var final_state_id = final_activity_data["state"]
+		var final_context = final_activity_data.duplicate()
+		final_context.erase("state")
 		
 		var state_comp = logic_node.get_component("StateComponent")
-		if state_comp and final_activity_id != "" and state_comp.get_current_state_id() != final_activity_id:
-			state_comp.push_state(final_activity_id)
+		if state_comp and state_comp.get_current_state_id() != final_state_id:
+			state_comp.push_state(final_state_id, final_context)
 			var time_str = "%02d:%02d" % [date_info.hour, date_info.minute]
-			print("[SCHEDULER] '%s' has resolved schedule. New activity: '%s' at %s on %s" % [entity.name, final_activity_id, time_str, date_info.day_of_week_name])
-
+			print("[SCHEDULER] '%s' new activity: '%s' at %s" % [entity.name, final_state_id, time_str])
 
 func _get_potential_activities(layer_ids: Array[String], date_info: Dictionary) -> Array[Dictionary]:
 	var activities: Array[Dictionary] = []
 	var time_key = "%02d:%02d" % [date_info.hour, date_info.minute]
-	
 	for layer_id in layer_ids:
 		var schedule_data = _schedules.get(layer_id)
 		if not schedule_data:
 			continue
 
-		# Check specific one-off events
+		var priority = schedule_data.get("priority", 0)
 		for event in schedule_data.get("specific_events", []):
 			if event.get("day") == date_info.day and event.get("month") == date_info.month_name and event.get("time") == time_key:
-				activities.append({"activity_id": event["activity"], "priority": schedule_data.get("priority", 0)})
+				var activity_data = event.get("activity", {}).duplicate()
+				activity_data["priority"] = priority
+				activities.append(activity_data)
 		
-		# Then check the weekly schedule
 		var weekly_schedule = schedule_data.get("weekly_schedule", {})
 		var day_name = date_info.day_of_week_name.to_lower()
 		if weekly_schedule.has(day_name) and weekly_schedule[day_name].has(time_key):
-			activities.append({"activity_id": weekly_schedule[day_name][time_key], "priority": schedule_data.get("priority", 0)})
-			 
+			var activity_data = weekly_schedule[day_name][time_key].duplicate()
+			activity_data["priority"] = priority
+			activities.append(activity_data)
 	return activities

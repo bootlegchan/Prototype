@@ -1,7 +1,0 @@
-{
-	"description": "Alex's personal one-off appointments.",
-	"priority": 100,
-	"specific_events": [
-		{ "month": "June", "day": 5, "year": 1, "time": "14:00", "activity": "activity/doctors_appointment" }
-	]
-}

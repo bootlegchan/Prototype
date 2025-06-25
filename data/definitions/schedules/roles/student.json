@@ -2,10 +2,10 @@
 	"description": "The daily routine of a student.",
 	"priority": 10,
 	"weekly_schedule": {
-		"monday":    { "09:00": "activity/go_to_class" },
-		"tuesday":   { "09:00": "activity/go_to_class" },
-		"wednesday": { "09:00": "activity/go_to_class" },
-		"thursday":  { "09:00": "activity/go_to_class" },
-		"friday":    { "09:00": "activity/go_to_class" }
+		"monday":    { "09:00": { "state": "activity/travel_to", "target": "university_classroom_1" } },
+		"tuesday":   { "09:00": { "state": "activity/travel_to", "target": "university_classroom_2" } },
+		"wednesday": { "09:00": { "state": "activity/travel_to", "target": "university_classroom_1" } },
+		"thursday":  { "09:00": { "state": "activity/travel_to", "target": "university_classroom_2" } },
+		"friday":    { "09:00": { "state": "activity/travel_to", "target": "university_classroom_1" } }
 	}
 }

@@ -1,0 +1,5 @@
+{
+	"description": "Attending a personal, uninterruptible appointment.",
+	"can_move": false,
+	"interruptible": false
+}
