@@ -1,0 +1,5 @@
+{
+	"description": "The entity is idle, waiting for a scheduled activity or interaction.",
+	"can_move": false,
+	"interruptible": true
+}
