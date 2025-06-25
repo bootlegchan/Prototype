@@ -4,11 +4,16 @@ var _entity_registry: Dictionary = {}
 var _node_to_instance_id_map: Dictionary = {}
 var _next_uid: int = 0
 
-func _ready() -> void: load_world_state()
+
+func _ready() -> void:
+	load_world_state()
+
 
 func load_world_state() -> void:
 	var file = FileAccess.open(Config.WORLD_STATE_FILE_PATH, FileAccess.READ)
-	if not file: return
+	if not file:
+		printerr("FATAL: Could not open world state file at: ", Config.WORLD_STATE_FILE_PATH)
+		return
 	var world_data = JSON.parse_string(file.get_as_text())
 	var entities_to_load = world_data.get("entities", [])
 	_entity_registry.clear()
@@ -23,33 +28,21 @@ func load_world_state() -> void:
 		stage_entity(entity_record["instance_id"])
 	print("Loaded and staged %s persistent root entities from world state." % entities_to_load.size())
 
-# --- NEW FUNCTION ---
-func destroy_all_with_tag(tag_id: String) -> void:
-	# We must copy the keys to a new array, because destroying an entity will
-	# modify the _node_to_instance_id_map while we are iterating over it.
-	var staged_nodes = _node_to_instance_id_map.keys()
-	for node in staged_nodes:
-		if not is_instance_valid(node): continue
-		var logic_node = node.get_node_or_null("EntityLogic")
-		if logic_node:
-			var tag_comp = logic_node.get_component("TagComponent")
-			if tag_comp and tag_comp.has_tag(tag_id):
-				# We destroy dynamic entities permanently. A more advanced system
-				# might just unstage them if they are persistent NPCs.
-				destroy_entity_permanently(node.name)
 
-# --- All other functions are unchanged ---
 func request_new_entity(definition_id: String, position: Vector3, name_override: String = "", parent_id: String = "") -> String:
 	var instance_id = name_override if not name_override.is_empty() else "%s_dyn_%s" % [definition_id.get_slice("/", -1), str(_get_next_uid())]
 	if _entity_registry.has(instance_id):
 		if not is_instance_valid(get_node_from_instance_id(instance_id)): stage_entity(instance_id)
 		return instance_id
+	
 	_entity_registry[instance_id] = { "instance_id": instance_id, "definition_id": definition_id, "position": position, "rotation": Vector3.ZERO, "component_data": {} }
 	if not parent_id.is_empty():
 		_entity_registry[instance_id]["component_data"]["ParentContextComponent"] = {"parent_id": parent_id}
 	EventSystem.emit_event("entity_record_created", {"instance_id": instance_id})
 	stage_entity(instance_id)
 	return instance_id
+
+
 func stage_entity(instance_id: String) -> void:
 	if not _entity_registry.has(instance_id) or is_instance_valid(get_node_from_instance_id(instance_id)): return
 	var entity_data = _entity_registry[instance_id]
@@ -60,6 +53,7 @@ func stage_entity(instance_id: String) -> void:
 		if entity_node is Node3D and entity_data.has("rotation"): entity_node.rotation_degrees = entity_data["rotation"]
 		get_tree().current_scene.add_child(entity_node)
 		EventSystem.emit_event("entity_staged", {"instance_id": instance_id, "node": entity_node})
+		
 		var definition = EntityFactory._entity_definitions[entity_data["definition_id"]]
 		if definition.has("child_entities"):
 			for child_data in definition["child_entities"]:
@@ -69,6 +63,8 @@ func stage_entity(instance_id: String) -> void:
 				var name_override = child_data.get("name_override", "")
 				var child_world_pos = entity_node.global_transform * child_relative_pos
 				request_new_entity(child_def_id, child_world_pos, name_override, instance_id)
+
+
 func unstage_entity(instance_id: String) -> void:
 	var entity_node = get_node_from_instance_id(instance_id)
 	if not is_instance_valid(entity_node): return
@@ -86,29 +82,59 @@ func unstage_entity(instance_id: String) -> void:
 	_node_to_instance_id_map.erase(entity_node)
 	entity_node.queue_free()
 	EventSystem.emit_event("entity_unstaged", {"instance_id": instance_id})
+
+
 func destroy_entity_permanently(instance_id: String) -> void:
 	if not _entity_registry.has(instance_id): return
 	unstage_entity(instance_id)
-	if _entity_registry.has(instance_id): _entity_registry.erase(instance_id)
+	if _entity_registry.has(instance_id):
+		_entity_registry.erase(instance_id)
 	EventSystem.emit_event("entity_destroyed", {"instance_id": instance_id})
+
+
+# --- THIS IS THE NEW, CORRECTLY IMPLEMENTED FUNCTION ---
+func destroy_all_with_tag(tag_id: String) -> void:
+	# We must copy the keys to a new array, because destroying an entity will
+	# modify the _node_to_instance_id_map while we are iterating over it.
+	var staged_nodes = _node_to_instance_id_map.keys()
+	for node in staged_nodes:
+		if not is_instance_valid(node): continue
+		var logic_node = node.get_node_or_null("EntityLogic")
+		if logic_node:
+			var tag_comp = logic_node.get_component("TagComponent")
+			if tag_comp and tag_comp.has_tag(tag_id):
+				# We destroy dynamic entities permanently. A more advanced system
+				# might just unstage them if they are persistent NPCs with schedules.
+				# For a temporary merchant, permanent destruction is correct.
+				destroy_entity_permanently(node.name)
+
+
 func add_tag_to_entity(instance_id: String, tag_id: String) -> void:
 	var component = get_entity_component(instance_id, "TagComponent")
 	if component:
 		component.add_tag(tag_id)
+
+
 func set_entity_state(instance_id: String, state_id: String) -> void:
 	var state_comp = get_entity_component(instance_id, "StateComponent")
 	if state_comp:
 		state_comp.push_state(state_id)
+
+
 func get_entity_component(instance_id: String, component_name: String) -> Node:
 	var node = get_node_from_instance_id(instance_id)
 	if is_instance_valid(node):
 		var logic_node = node.get_node_or_null("EntityLogic")
 		if is_instance_valid(logic_node): return logic_node.get_component(component_name)
 	return null
+
+
 func get_node_from_instance_id(instance_id: String) -> Node:
 	for node in _node_to_instance_id_map:
 		if _node_to_instance_id_map[node] == instance_id: return node
 	return null
+
+
 func _get_next_uid() -> int:
 	_next_uid += 1
 	return _next_uid
