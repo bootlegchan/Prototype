@@ -13,7 +13,7 @@ func _ready() -> void:
 	print("SchedulingSystem ready.")
 
 func connect_to_time_system() -> void:
-	if not TimeSystem.current_minute_changed.is_connected(_on_time_changed):
+	if TimeSystem and not TimeSystem.current_minute_changed.is_connected(_on_time_changed):
 		TimeSystem.current_minute_changed.connect(_on_time_changed)
 
 func _load_all_schedules(path: String) -> void:
@@ -68,10 +68,7 @@ func _on_time_changed(hour: int, minute: int) -> void:
 
 
 func _get_potential_activities(layer_ids: Array[String]) -> Array[Dictionary]:
-	# --- THIS IS THE FIX ---
-	# We explicitly declare the array's type to match the function's return type.
 	var activities: Array[Dictionary] = []
-	
 	var date_info = TimeSystem.get_current_date_info()
 	var time_key = "%02d:%02d" % [date_info.hour, date_info.minute]
 	
@@ -89,6 +86,6 @@ func _get_potential_activities(layer_ids: Array[String]) -> Array[Dictionary]:
 		var weekly_schedule = schedule_data.get("weekly_schedule", {})
 		var day_name = date_info.day_of_week_name.to_lower()
 		if weekly_schedule.has(day_name) and weekly_schedule[day_name].has(time_key):
-			 activities.append({"activity_id": weekly_schedule[day_name][time_key], "priority": schedule_data.get("priority", 0)})
+			activities.append({"activity_id": weekly_schedule[day_name][time_key], "priority": schedule_data.get("priority", 0)})
 			 
 	return activities
