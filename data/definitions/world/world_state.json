@@ -1,1 +1,20 @@
-{ "entities": [{ "instance_id": "school_main", "definition_id": "locations/school", "position": { "x": 0, "y": 0, "z": 0 }}] }
+{
+	"description": "Initial state for the grand finale test.",
+	"entities": [
+		{
+			"instance_id": "school_main",
+			"definition_id": "locations/school",
+			"position": { "x": 0, "y": 0, "z": 0 }
+		},
+		{
+			"instance_id": "main_player",
+			"definition_id": "characters/player",
+			"position": { "x": 0, "y": 0, "z": 15 }
+		},
+		{
+			"instance_id": "lost_id_card_01",
+			"definition_id": "items/quest/student_id_card",
+			"position": { "x": 0, "y": 0.1, "z": 2 }
+		}
+	]
+}

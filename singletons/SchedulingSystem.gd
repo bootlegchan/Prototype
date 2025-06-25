@@ -49,7 +49,7 @@ func _on_time_updated(date_info: Dictionary) -> void:
 		if not schedule_comp:
 			continue
 			
-		var potential_activities = _get_potential_activities(schedule_comp.schedule_layer_ids, date_info)
+		var potential_activities = _get_potential_activities(schedule_comp, date_info)
 		if potential_activities.is_empty():
 			continue
 			
@@ -57,35 +57,64 @@ func _on_time_updated(date_info: Dictionary) -> void:
 		if final_activity_data.is_empty():
 			continue
 			
-		var final_state_id = final_activity_data["state"]
-		var final_context = final_activity_data.duplicate()
-		final_context.erase("state")
-		
-		var state_comp = logic_node.get_component("StateComponent")
-		if state_comp and state_comp.get_current_state_id() != final_state_id:
-			state_comp.push_state(final_state_id, final_context)
-			var time_str = "%02d:%02d" % [date_info.hour, date_info.minute]
-			print("[SCHEDULER] '%s' new activity: '%s' at %s" % [entity.name, final_state_id, time_str])
+		_execute_activity(entity, final_activity_data, date_info)
 
-func _get_potential_activities(layer_ids: Array[String], date_info: Dictionary) -> Array[Dictionary]:
+func _get_potential_activities(schedule_comp: ScheduleComponent, date_info: Dictionary) -> Array[Dictionary]:
 	var activities: Array[Dictionary] = []
-	var time_key = "%02d:%02d" % [date_info.hour, date_info.minute]
-	for layer_id in layer_ids:
+	
+	# Case 1: Character with layered schedules
+	for layer_id in schedule_comp.schedule_layer_ids:
 		var schedule_data = _schedules.get(layer_id)
-		if not schedule_data:
-			continue
-
-		var priority = schedule_data.get("priority", 0)
-		for event in schedule_data.get("specific_events", []):
-			if event.get("day") == date_info.day and event.get("month") == date_info.month_name and event.get("time") == time_key:
-				var activity_data = event.get("activity", {}).duplicate()
-				activity_data["priority"] = priority
-				activities.append(activity_data)
-		
-		var weekly_schedule = schedule_data.get("weekly_schedule", {})
-		var day_name = date_info.day_of_week_name.to_lower()
-		if weekly_schedule.has(day_name) and weekly_schedule[day_name].has(time_key):
-			var activity_data = weekly_schedule[day_name][time_key].duplicate()
-			activity_data["priority"] = priority
-			activities.append(activity_data)
+		if schedule_data:
+			activities.append_array(_extract_activities_from_schedule(schedule_data, date_info))
+	
+	# Case 2: Location with a direct schedule
+	activities.append_array(_extract_activities_from_schedule(schedule_comp, date_info))
+	
 	return activities
+
+func _extract_activities_from_schedule(schedule_data, date_info: Dictionary) -> Array[Dictionary]:
+	var found_activities: Array[Dictionary] = []
+	var time_key = "%02d:%02d" % [date_info.hour, date_info.minute]
+	var priority = schedule_data.get("priority", 0)
+	
+	# Check specific events
+	for event in schedule_data.get("specific_events", []):
+		if event.get("day") == date_info.day and event.get("month") == date_info.month_name and event.get("time") == time_key:
+			var activity_data = event.get("activity", {}).duplicate()
+			activity_data["priority"] = priority
+			found_activities.append(activity_data)
+			
+	# Check weekly schedule
+	var weekly_schedule = schedule_data.get("weekly_schedule", {})
+	var day_name = date_info.day_of_week_name.to_lower()
+	if weekly_schedule.has(day_name) and weekly_schedule[day_name].has(time_key):
+		var activity_data = weekly_schedule[day_name][time_key].duplicate()
+		activity_data["priority"] = priority
+		found_activities.append(activity_data)
+		 
+	return found_activities
+
+func _execute_activity(entity: Node, activity_data: Dictionary, date_info: Dictionary) -> void:
+	var state_to_enter = activity_data.get("state")
+	if not state_to_enter:
+		return
+
+	var state_comp = entity.get_node("EntityLogic").get_component("StateComponent")
+	if state_comp and state_comp.get_current_state_id() != state_to_enter:
+		var context = activity_data.duplicate()
+		context.erase("state")
+		context.erase("priority")
+		state_comp.push_state(state_to_enter, context)
+		var time_str = "%02d:%02d" % [date_info.hour, date_info.minute]
+		print("[SCHEDULER] '%s' new activity: '%s' at %s" % [entity.name, state_to_enter, time_str])
+
+		# Also handle spawning if the state requires it
+		var state_data = StateRegistry.get_state_definition(state_to_enter)
+		if state_data.has("on_enter_spawn"):
+			var spawn_list_id = state_data["on_enter_spawn"]
+			print("State change for '%s' is triggering spawn list: '%s'" % [entity.name, spawn_list_id])
+			# Cast to Node3D to access global_position
+			var entity_node_3d = entity as Node3D
+			if entity_node_3d:
+				SpawningSystem.execute_spawn_list(spawn_list_id, entity_node_3d.global_position)
