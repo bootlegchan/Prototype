@@ -2,13 +2,16 @@
 	"name": "Market Square",
 	"base_node_type": "StaticBody3D",
 	"components": {
+		"StateComponent": {
+			"initial_state": "market/closed"
+		},
 		"ScheduleComponent": {
 			"weekly_schedule": {
-				"monday":    { "10:00": { "state": "market/open" } },
-				"tuesday":   { "10:00": { "state": "market/open" } },
-				"wednesday": { "10:00": { "state": "market/open" } },
-				"thursday":  { "10:00": { "state": "market/open" } },
-				"friday":    { "10:00": { "state": "market/open" } }
+				"monday":    { "10:00": { "state": "market/open" }, "18:00": { "state": "market/closed" } },
+				"tuesday":   { "10:00": { "state": "market/open" }, "18:00": { "state": "market/closed" } },
+				"wednesday": { "10:00": { "state": "market/open" }, "18:00": { "state": "market/closed" } },
+				"thursday":  { "10:00": { "state": "market/open" }, "18:00": { "state": "market/closed" } },
+				"friday":    { "10:00": { "state": "market/open" }, "18:00": { "state": "market/closed" } }
 			}
 		}
 	}

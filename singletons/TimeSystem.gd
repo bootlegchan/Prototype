@@ -1,7 +1,8 @@
 extends Node
 
-# A single, unified signal is cleaner and more efficient.
 signal time_updated(date_info: Dictionary)
+# NEW: A more explicit signal for daily resets.
+signal day_started(date_info: Dictionary)
 
 var _seconds_per_minute: float = 1.0
 var _calender_data: Dictionary = {}
@@ -20,9 +21,7 @@ func _ready() -> void:
 
 func _load_settings() -> void:
 	var file = FileAccess.open(Config.TIME_SETTINGS_FILE_PATH, FileAccess.READ)
-	if not file:
-		printerr("Could not open time_settings.json. Using default values.")
-		return
+	if not file: return
 	var settings = JSON.parse_string(file.get_as_text())
 	_seconds_per_minute = settings.get("seconds_per_minute", 1.0)
 	current_hour = settings.get("start_hour", 8)
@@ -33,18 +32,14 @@ func _load_settings() -> void:
 
 func _load_calender() -> void:
 	var file = FileAccess.open(Config.CALENDER_FILE_PATH, FileAccess.READ)
-	if not file:
-		printerr("FATAL: Could not open calender.json at: ", Config.CALENDER_FILE_PATH)
-		return
+	if not file: return
 	_calender_data = JSON.parse_string(file.get_as_text())
 	print("Calender loaded with %s months and %s days in a week." % [_calender_data.get("months", []).size(), _calender_data.get("days_of_week", []).size()])
 
 func _initialize_total_days() -> void:
 	_total_days_elapsed = 0
 	var months = _calender_data.get("months", [])
-	if months.is_empty():
-		print("TimeSystem initialized with no calender data.")
-		return
+	if months.is_empty(): return
 	var full_year_days = 0
 	for month_data in months:
 		full_year_days += month_data.get("length", 30)
@@ -65,8 +60,6 @@ func _advance_minute() -> void:
 	if current_minute >= 60:
 		current_minute = 0
 		_advance_hour()
-	
-	# Emit the single, unified signal.
 	emit_signal("time_updated", get_current_date_info())
 
 func _advance_hour() -> void:
@@ -82,6 +75,8 @@ func _advance_day() -> void:
 	if month_info and current_day > month_info.get("length", 30):
 		current_day = 1
 		_advance_month()
+	# Emit the signal that other systems can subscribe to.
+	emit_signal("day_started", get_current_date_info())
 
 func _advance_month() -> void:
 	current_month_index += 1

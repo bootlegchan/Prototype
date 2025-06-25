@@ -1,39 +1,52 @@
 extends Node3D
 
 var player_id = "player_character"
-var merchant_id = "" # Will be populated by the event system
+var merchant_id = ""
+var test_phase_complete = false # A flag to prevent the test from running multiple times
 
 func _ready() -> void:
 	print("Main scene ready. Starting Grand Integration Test.")
 	
-	# Set time to just before the market opens
+	# Set time to just before the market opens.
 	TimeSystem.current_hour = 9
 	TimeSystem.current_minute = 58
+	
 	var time_system = get_node_or_null("/root/TimeSystem")
 	if time_system:
-		# Set a very fast time scale so 10:00 arrives almost instantly
+		# Set a very fast time scale so 10:00 arrives almost instantly.
 		time_system._seconds_per_minute = 0.01
 
-	# Listen for the merchant to be spawned by the schedule
+	# Listen for the specific entity we are waiting for.
 	EventSystem.subscribe("entity_staged", Callable(self, "_on_entity_staged"))
-	
-	# Give the simulation a moment to run and spawn the merchant, then proceed
-	call_deferred("run_interaction_phase")
+	print("Test is now waiting for the scheduler to spawn the merchant...")
+
 
 func _on_entity_staged(payload: Dictionary) -> void:
+	# This function will be called for every entity that spawns.
+	# We only care about the merchant for this test.
 	var instance_id = payload.get("instance_id", "")
-	if instance_id.begins_with("merchant"):
+	
+	# Check if this is the merchant and if we haven't already run the test.
+	if instance_id.begins_with("merchant") and not test_phase_complete:
+		test_phase_complete = true # Set the flag to true
 		merchant_id = instance_id
-		print("[TEST] Merchant has been spawned by the scheduling system with ID: '%s'" % merchant_id)
+		print("[TEST] The expected merchant has spawned with ID: '%s'" % merchant_id)
+		
+		# --- THIS IS THE FIX ---
+		# Now that we know the merchant exists, proceed to the next phase of the test.
+		# Use call_deferred to ensure we don't do this in the middle of the event signal.
+		call_deferred("run_interaction_phase")
+
 
 func run_interaction_phase() -> void:
 	if merchant_id.is_empty():
-		print("TEST FAILED: Merchant was not spawned by the scheduler.")
+		# This case is a failsafe.
+		print("TEST FAILED: Interaction phase ran before merchant was spawned.")
 		return
 
 	print("\n--- Running Interaction Phase ---")
 	
-	# Simulate Player buying an apple from the Merchant
+	# 1. Simulate Player buying an apple from the Merchant
 	var player_inventory = EntityManager.get_entity_component(player_id, "InventoryComponent")
 	var merchant_inventory = EntityManager.get_entity_component(merchant_id, "InventoryComponent")
 	
@@ -45,12 +58,13 @@ func run_interaction_phase() -> void:
 		print("TEST FAILED: Could not find required inventories.")
 		return
 
-	# Unstage and restage the player to test persistence
+	# 2. Unstage and restage the player to test persistence
 	print("\n[Phase 2: Unstage and Restage Player]")
 	EntityManager.unstage_entity(player_id)
 	EntityManager.stage_entity(player_id)
 	
 	call_deferred("verify_final_state")
+
 
 func verify_final_state() -> void:
 	print("\n[Phase 3: Verifying Final State]")

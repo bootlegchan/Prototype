@@ -6,7 +6,6 @@ func _ready() -> void:
 	_schedule_layers.clear()
 	_load_all_schedule_layers(Config.SCHEDULES_DEFINITION_PATH)
 	print("Loaded %s schedule layer definitions." % _schedule_layers.size())
-	
 	if get_node_or_null("/root/TimeSystem"):
 		TimeSystem.time_updated.connect(_on_time_updated)
 	else:
@@ -19,7 +18,12 @@ func connect_to_time_system() -> void:
 
 func _load_all_schedule_layers(path: String) -> void:
 	var dir = DirAccess.open(path)
-	if not dir: return
+	if not dir:
+		# The function must still execute, even if the directory is missing.
+		# The error is printed, and the process continues.
+		printerr("Schedule layers directory not found at: ", path)
+		return
+		
 	dir.list_dir_begin()
 	var item_name = dir.get_next()
 	while item_name != "":
@@ -51,62 +55,59 @@ func _on_time_updated(date_info: Dictionary) -> void:
 		var final_activity_data = ConflictResolutionSystem.resolve(potential_activities)
 		if final_activity_data.is_empty(): continue
 			
-		_execute_activity(entity, final_activity_data, date_info)
+		_execute_activity(entity, final_activity_data)
 
 func _get_potential_activities_for_entity(schedule_comp: ScheduleComponent, date_info: Dictionary) -> Array[Dictionary]:
 	var activities: Array[Dictionary] = []
-	
-	# Case 1: Character with layered schedules
 	for layer_id in schedule_comp.schedule_layer_ids:
 		var schedule_data = _schedule_layers.get(layer_id)
 		if schedule_data:
 			activities.append_array(_extract_activities_from_schedule_data(schedule_data, date_info))
-	
-	# Case 2: Location with a direct schedule
-	activities.append_array(_extract_activities_from_schedule_data(schedule_comp, date_info))
-	
+	if not schedule_comp.weekly_schedule.is_empty() or not schedule_comp.specific_events.is_empty():
+		var direct_schedule_data = { "weekly_schedule": schedule_comp.weekly_schedule,
+			"specific_events": schedule_comp.specific_events, "priority": schedule_comp.priority }
+		activities.append_array(_extract_activities_from_schedule_data(direct_schedule_data, date_info))
 	return activities
 
-func _extract_activities_from_schedule_data(schedule_data, date_info: Dictionary) -> Array[Dictionary]:
-	var found_activities: Array[Dictionary] = []
+func _extract_activities_from_schedule_data(schedule_data: Dictionary, date_info: Dictionary) -> Array[Dictionary]:
+	var found: Array[Dictionary] = []
 	var time_key = "%02d:%02d" % [date_info.hour, date_info.minute]
 	var priority = schedule_data.get("priority", 0)
-	
 	for event in schedule_data.get("specific_events", []):
-		if event.get("day") == date_info.day and event.get("month") == date_info.month_name and event.get("time") == time_key:
-			var activity_data = event.get("activity", {}).duplicate()
-			activity_data["priority"] = priority
-			found_activities.append(activity_data)
-			
-	var weekly_schedule = schedule_data.get("weekly_schedule", {})
+		if event.get("day")==date_info.day and event.get("month")==date_info.month_name and event.get("time")==time_key:
+			var activity = event.get("activity", {}).duplicate(); activity["priority"] = priority; found.append(activity)
+	var weekly = schedule_data.get("weekly_schedule", {})
 	var day_name = date_info.day_of_week_name.to_lower()
-	if weekly_schedule.has(day_name) and weekly_schedule[day_name].has(time_key):
-		var activity_data = weekly_schedule[day_name][time_key].duplicate()
-		activity_data["priority"] = priority
-		found_activities.append(activity_data)
-		 
-	return found_activities
+	if weekly.has(day_name) and weekly[day_name].has(time_key):
+		var activity = weekly[day_name][time_key].duplicate(); activity["priority"] = priority; found.append(activity)
+	return found
 
-func _execute_activity(entity: Node, activity_data: Dictionary, date_info: Dictionary) -> void:
+func _execute_activity(entity: Node, activity_data: Dictionary) -> void:
 	var state_to_enter = activity_data.get("state")
-	if not state_to_enter:
+	if not state_to_enter: return
+
+	var state_comp = entity.get_node("EntityLogic").get_component("StateComponent")
+	if not state_comp:
+		printerr("Scheduled entity '%s' is missing a StateComponent." % entity.name)
+		return
+		
+	if state_comp.get_current_state_id() == state_to_enter: return
+	
+	var state_data = StateRegistry.get_state_definition(state_to_enter)
+	var required_tag = state_data.get("tag_to_apply_on_enter")
+	
+	var tag_comp = entity.get_node("EntityLogic").get_component("TagComponent")
+	if required_tag and tag_comp and tag_comp.has_tag(required_tag):
 		return
 
-	# --- THIS IS THE FIX ---
-	# We first handle the state change for entities that have a StateComponent.
-	var state_comp = entity.get_node("EntityLogic").get_component("StateComponent")
-	if state_comp and state_comp.get_current_state_id() != state_to_enter:
-		var context = activity_data.duplicate()
-		context.erase("state")
-		context.erase("priority")
-		state_comp.push_state(state_to_enter, context)
-		print("[SCHEDULER] '%s' new activity: '%s'" % [entity.name, state_to_enter])
+	var context = activity_data.duplicate(); context.erase("state"); context.erase("priority")
+	state_comp.push_state(state_to_enter, context)
+	print("[SCHEDULER] Entity '%s' new activity: '%s'" % [entity.name, state_to_enter])
 
-	# Then, INDEPENDENTLY, we check if the triggered state definition has an `on_enter_spawn` event.
-	# This works for both characters and locations, regardless of whether they have a StateComponent.
-	var state_data = StateRegistry.get_state_definition(state_to_enter)
+	if required_tag and tag_comp:
+		EntityManager.add_tag_to_entity(entity.name, required_tag)
+		
 	if state_data.has("on_enter_spawn"):
 		var spawn_list_id = state_data["on_enter_spawn"]
-		print("Scheduled event '%s' on '%s' is triggering spawn list: '%s'" % [state_to_enter, entity.name, spawn_list_id])
-		if entity is Node3D:
-			SpawningSystem.execute_spawn_list(spawn_list_id, entity.global_position)
+		print("State change on '%s' is triggering spawn list: '%s'" % [entity.name, spawn_list_id])
+		if entity is Node3D: SpawningSystem.execute_spawn_list(spawn_list_id, entity.global_position)

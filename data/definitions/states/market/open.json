@@ -1,0 +1,4 @@
+{
+	"description": "The market is open for business, vendors should appear.",
+	"on_enter_spawn": "market_day_vendors"
+}
