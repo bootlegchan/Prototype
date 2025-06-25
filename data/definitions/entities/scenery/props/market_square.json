@@ -1,0 +1,15 @@
+{
+	"name": "Market Square",
+	"base_node_type": "StaticBody3D",
+	"components": {
+		"ScheduleComponent": {
+			"weekly_schedule": {
+				"monday":    { "10:00": { "state": "market/open" } },
+				"tuesday":   { "10:00": { "state": "market/open" } },
+				"wednesday": { "10:00": { "state": "market/open" } },
+				"thursday":  { "10:00": { "state": "market/open" } },
+				"friday":    { "10:00": { "state": "market/open" } }
+			}
+		}
+	}
+}

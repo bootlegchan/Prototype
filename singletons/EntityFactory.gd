@@ -1,8 +1,5 @@
 extends Node
 
-const DEFINITION_PATH = "res://data/definitions/entities/"
-const COMPONENT_PATH = "res://components/"
-
 var _entity_definitions: Dictionary = {}
 var _component_map: Dictionary = {}
 
@@ -12,7 +9,7 @@ func _ready() -> void:
 	_component_map.clear()
 	_recursive_load_definitions(Config.ENTITY_DEFINITION_PATH)
 	print("Loaded %s entity definitions." % _entity_definitions.size())
-	_register_all_components()
+	_register_all_components(Config.COMPONENT_PATH)
 
 
 func create_entity_node(definition_id: String, position: Vector3, saved_component_data: Dictionary = {}) -> Node:
@@ -31,7 +28,7 @@ func create_entity_node(definition_id: String, position: Vector3, saved_componen
 	physics_body.position = position
 	var scale_vector = Vector3.ONE
 	if definition.has("scale"):
-		var scale_data: Dictionary = definition["scale"]
+		var scale_data = definition["scale"]
 		scale_vector = Vector3(scale_data.get("x", 1.0), scale_data.get("y", 1.0), scale_data.get("z", 1.0))
 	physics_body.scale = scale_vector
 
@@ -39,21 +36,18 @@ func create_entity_node(definition_id: String, position: Vector3, saved_componen
 	entity_logic_node.name = "EntityLogic"
 	physics_body.add_child(entity_logic_node)
 
-	if definition.has("components") and definition["components"].has("VisualComponent"):
-		var visual_data = definition["components"]["VisualComponent"]
-		var shape_type_str = visual_data.get("shape", "box")
-		_add_collision_shape_to_entity(physics_body, shape_type_str)
-
 	var components_from_def = definition.get("components", {})
+	
+	if components_from_def.has("VisualComponent"):
+		var visual_data = components_from_def["VisualComponent"]
+		_add_collision_shape_to_entity(physics_body, visual_data.get("shape", "box"))
+
 	var all_component_names = components_from_def.keys() + saved_component_data.keys()
 	var unique_component_names = []
-	
-	# --- THIS IS THE FIX ---
-	# Renamed the iterator variable from "name" to "comp_name" to avoid shadowing.
 	for comp_name in all_component_names:
 		if not comp_name in unique_component_names:
 			unique_component_names.append(comp_name)
-			
+	
 	if not unique_component_names.is_empty():
 		for component_name in unique_component_names:
 			if not _component_map.has(component_name):
@@ -63,7 +57,7 @@ func create_entity_node(definition_id: String, position: Vector3, saved_componen
 			component_node.name = component_name
 			component_node.set_script(_component_map[component_name])
 			entity_logic_node.add_component(component_name, component_node)
-
+		
 		for component_name in unique_component_names:
 			var component_node = entity_logic_node.get_component(component_name)
 			if component_node and component_node.has_method("initialize"):
@@ -78,6 +72,7 @@ func create_entity_node(definition_id: String, position: Vector3, saved_componen
 	print("Entity node created for definition '%s'." % definition_id)
 	return physics_body
 	
+
 func create_and_initialize_component(component_name: String, initial_data: Dictionary, entity_name: String) -> Node:
 	if not _component_map.has(component_name):
 		printerr("Component '%s' is not registered." % component_name)
@@ -88,7 +83,6 @@ func create_and_initialize_component(component_name: String, initial_data: Dicti
 	component_node.set_script(_component_map[component_name])
 	
 	_initialize_component(component_node, component_name, initial_data.duplicate(), entity_name)
-	# The add_component now happens last, and it correctly replaces the old one.
 	return component_node
 
 
@@ -96,9 +90,19 @@ func _initialize_component(component_node: Node, component_name: String, initial
 	var data_for_init
 	
 	match component_name:
-		"StateComponent", "ScheduleComponent", "InventoryComponent":
+		"StateComponent", "ScheduleComponent", "InventoryComponent", "LocationComponent":
 			data_for_init = [entity_name, initial_data]
 		
+		"ParentContextComponent":
+			# --- THIS IS THE FIX ---
+			# This component only ever takes its own direct data block, whether it's
+			# fresh or being re-hydrated. It doesn't need the entity name.
+			# We check for saved_data and pass the inner dictionary if it exists.
+			if initial_data.has("saved_data"):
+				data_for_init = [initial_data["saved_data"]]
+			else:
+				data_for_init = [initial_data]
+
 		"TagComponent":
 			if initial_data.has("saved_data"):
 				data_for_init = [initial_data]
@@ -112,7 +116,7 @@ func _initialize_component(component_node: Node, component_name: String, initial
 						push_warning("Undefined tag '%s' for entity '%s'." % [tag_id, entity_name])
 				data_for_init = [resolved_tags]
 		
-		_:
+		_: # Default handler for ItemComponent, VisualComponent, etc.
 			data_for_init = [initial_data]
 	
 	Callable(component_node, "initialize").callv(data_for_init)
@@ -141,16 +145,16 @@ func _recursive_load_definitions(path: String) -> void:
 		item_name = dir.get_next()
 
 
-func _register_all_components() -> void:
-	var dir = DirAccess.open(Config.COMPONENT_PATH)
+func _register_all_components(path: String) -> void:
+	var dir = DirAccess.open(path)
 	if not dir:
-		printerr("Components directory not found: ", Config.COMPONENT_PATH)
+		printerr("Components directory not found: ", path)
 		return
 	dir.list_dir_begin()
 	var file_name = dir.get_next()
 	while file_name != "":
 		if not dir.current_is_dir() and file_name.ends_with(".gd"):
-			var script: GDScript = load(Config.COMPONENT_PATH + file_name)
+			var script: GDScript = load(path + file_name)
 			var component_name = file_name.get_basename()
 			if not component_name.is_empty():
 				_component_map[component_name] = script
