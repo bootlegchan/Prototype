@@ -20,4 +20,5 @@ const WORLD_STATE_FILE_PATH = WORLD_DATA_PATH + "world_state.json"
 const TIME_SETTINGS_FILE_PATH = SETTINGS_PATH + "time_settings.json"
 
 # --- Component Paths ---
-const COMPONENT_PATH = "res://components/"
+# Corrected path after moving the components folder into the 'script' folder
+const COMPONENT_PATH = "res://script/components/"
