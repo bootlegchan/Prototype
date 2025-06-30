@@ -38,3 +38,8 @@ window/size/viewport_height=720
 [dotnet]
 
 project/assembly_name="Prototype"
+
+[plugins]
+
+ai_assistant_hub/base_url="https://generativelanguage.googleapis.com/"
+ai_assistant_hub/llm_api="gemini_api"
