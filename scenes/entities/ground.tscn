@@ -2,7 +2,11 @@
 
 [ext_resource type="Script" path="res://script/entities/Ground.gd" id="1_4n55s"]
 
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_5w5wg"]
+albedo_color = Color(0.3, 0.5, 0.3, 1) # A simple green/grey color
+
 [sub_resource type="BoxMesh" id="BoxMesh_i7y5g"]
+material = SubResource("StandardMaterial3D_5w5wg")
 size = Vector3(100, 0.2, 100)
 
 [node name="Ground" type="StaticBody3D"]

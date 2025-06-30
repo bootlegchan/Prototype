@@ -1,0 +1,11 @@
+{
+	"priority": 5,
+	"weekly_schedule": {
+		"friday": {
+			"10:01": { 
+				"state": "activity/travel_to",
+				"destination_marker": "test_destination_marker"
+			}
+		}
+	}
+}

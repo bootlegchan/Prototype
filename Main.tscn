@@ -1,6 +1,8 @@
-[gd_scene load_steps=2 format=3 uid="uid://dl3qyx85j6nko"]
+[gd_scene load_steps=3 format=3 uid="uid://dl3qyx85j6nko"]
 
 [ext_resource type="Script" uid="uid://bbcxe6vo2ji6r" path="res://Main.gd" id="1_4v6fu"]
+
+[sub_resource type="SphereMesh" id="SphereMesh_c2kfi"]
 
 [node name="Main" type="Node3D"]
 script = ExtResource("1_4v6fu")
@@ -10,3 +12,10 @@ transform = Transform3D(1, 0, 0, 0, 0.965926, 0.258819, 0, -0.258819, 0.965926, 
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
 transform = Transform3D(-0.866025, -0.433013, 0.25, 0, 0.5, 0.866025, -0.5, 0.75, -0.433013, 0, 0, 0)
+light_energy = 2.0
+
+[node name="test_destination_marker" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 0, -10)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="test_destination_marker"]
+mesh = SubResource("SphereMesh_c2kfi")

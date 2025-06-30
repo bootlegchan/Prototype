@@ -29,8 +29,4 @@ SpawningSystem="*res://script/singletons/SpawningSystem.gd"
 DebugLogSystem="*res://script/singletons/DebugLogSystem.gd"
 SchedulingSystem="*res://script/singletons/SchedulingSystem.gd"
 ConflictResolutionSystem="*res://script/singletons/ConflictResolutionSystem.gd"
-
-[display]
-
-window/size/viewport_width=1280
-window/size/viewport_height=720
+NavigationManager="*res://script/singletons/NavigationManager.gd"

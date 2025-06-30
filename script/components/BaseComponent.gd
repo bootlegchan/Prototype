@@ -15,6 +15,12 @@ func initialize(data: Dictionary, entity_logic_node: Node) -> void:
 	
 	# Call the specific setup logic for the child component.
 	_load_data(data)
+	
+	# --- THIS IS THE CHANGE ---
+	# Call the post-initialization logic, which happens after all
+	# components for this entity have been loaded and added to the BaseEntity.
+	_post_initialize()
+	# --- END OF CHANGE ---
 
 
 ## This is a "virtual" function intended to be overridden by child components.
@@ -23,6 +29,16 @@ func initialize(data: Dictionary, entity_logic_node: Node) -> void:
 func _load_data(data: Dictionary) -> void:
 	# Base implementation does nothing.
 	pass
+
+
+# --- THIS IS THE NEW FUNCTION ---
+## This is a "virtual" function intended to be overridden by child components.
+## It is called after all components for the entity have been initialized via _load_data.
+## This is the safe place to get references to sibling components.
+func _post_initialize() -> void:
+	# Base implementation does nothing.
+	pass
+# --- END OF NEW FUNCTION ---
 
 
 ## This is a "virtual" function for persistence.

@@ -3,7 +3,7 @@
 	"base_node_type": "CharacterBody3D",
 	"scale": { "x": 1, "y": 2, "z": 1 },
 	"components": {
-		"VisualComponent": { "shape": "capsule", "color": "8080ff" },
+		"VisualComponent": { "shape": "capsule", "color": "#0000FF" },
 		"TagComponent": { "tags": ["roles/player"] },
 		"InventoryComponent": {},
 		"ScheduleComponent": {}

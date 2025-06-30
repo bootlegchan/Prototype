@@ -1,0 +1,14 @@
+[gd_scene load_steps=3 format=3 uid="uid://dl3qyx85j6nko"]
+
+[ext_resource type="Script" uid="uid://bbcxe6vo2ji6r" path="res://Main.gd" id="1_4v6fu"]
+
+[sub_resource type="SphereMesh" id="SphereMesh_c2kfi"]
+
+[node name="Main" type="Node3D"]
+script = ExtResource("1_4v6fu")
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.92388, 0.382683, 0, -0.382683, 0.92388, 0, 6, 18)
+
+[node name="test_destination_marker#MeshInstance3D" type="MeshInstance3D" parent="."]
+mesh = SubResource("SphereMesh_c2kfi")

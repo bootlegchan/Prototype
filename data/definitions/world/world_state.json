@@ -9,12 +9,17 @@
 		{
 			"instance_id": "player_character",
 			"definition_id": "characters/player",
-			"position": { "x": 0, "y": 1, "z": 5 }
+			"position": { "x": 5, "y": 1, "z": 5 }
 		},
 		{
 			"instance_id": "main_market_square",
 			"definition_id": "scenery/props/market_square",
 			"position": { "x": 0, "y": 1, "z": 0 }
+		},
+		{
+			"instance_id": "test_merchant",
+			"definition_id": "characters/merchant",
+			"position": { "x": 2, "y": 1, "z": 2 }
 		}
 	]
 }

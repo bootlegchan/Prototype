@@ -2,13 +2,16 @@
 	"name": "Wandering Merchant",
 	"base_node_type": "CharacterBody3D",
 	"components": {
-		"VisualComponent": { "shape": "capsule", "color": "A52A2A" },
+		"VisualComponent": { "shape": "capsule", "color": "#00FF00" },
 		"StateComponent": { "initial_state": "common/idle" },
 		"InventoryComponent": {
 			"initial_items": {
 				"consumable/apple": 1
 			}
 		},
-		"TagComponent": { "tags": ["roles/merchant"] }
+		"TagComponent": { "tags": ["roles/merchant"] },
+		"ScheduleComponent": {
+			"layers": ["roles/merchant"]
+		}
 	}
 }

@@ -7,24 +7,71 @@ var _next_uid: int = 0
 
 func _ready() -> void:
 	load_world_state()
+	# --- THIS IS THE CHANGE ---
+	print("EntityManager: Calling deferred bake_nav_mesh_after_staging.")
+	call_deferred("bake_nav_mesh_after_staging")
+	# --- END OF CHANGE ---
+
+
+func bake_nav_mesh_after_staging() -> void:
+	print("EntityManager: bake_nav_mesh_after_staging called.")
+	# --- THIS IS THE CHANGE ---
+	# Access NavigationManager using get_node() to be safe.
+	var nav_manager = get_node_or_null("/root/NavigationManager")
+	if is_instance_valid(nav_manager):
+		print("EntityManager: Triggering NavigationManager bake NavMesh.")
+		nav_manager.bake_nav_mesh_from_group("walkable_geometry") # Call method on instance
+		print("EntityManager: Requested NavigationManager to bake NavMesh.")
+	else:
+		printerr("EntityManager: NavigationManager not available for baking after staging.")
+	# --- END OF CHANGE ---
+
 
 func load_world_state() -> void:
+	print("EntityManager: load_world_state called. Opening world state file.")
 	var file = FileAccess.open(Config.WORLD_STATE_FILE_PATH, FileAccess.READ)
-	if not file: return
-	var json = JSON.new(); json.parse(file.get_as_text()); file.close()
+	if not file:
+		printerr("FATAL: Could not open world state file at: ", Config.WORLD_STATE_FILE_PATH)
+		return
+	
+	var text = file.get_as_text()
+	file.close()
+
+	var json = JSON.new()
+	if json.parse(text) != OK:
+		printerr("FATAL: Could not parse world state JSON. Error: %s at line %s" % [json.get_error_message(), json.get_error_line()])
+		return
+		
 	var world_data: Dictionary = json.get_data()
 	var entities_to_load = world_data.get("entities", [])
+	print("EntityManager: Found %d entities to load from world state." % entities_to_load.size())
+
 	_entity_registry.clear()
 	for entity_record in entities_to_load:
 		var instance_id = entity_record.get("instance_id")
-		if instance_id and not _entity_registry.has(instance_id):
-			_entity_registry[instance_id] = {
-				"instance_id": instance_id, "definition_id": entity_record["definition_id"],
-				"position": Vector3(entity_record.get("position",{}).get("x",0.0), entity_record.get("position",{}).get("y",0.0), entity_record.get("position",{}).get("z",0.0)),
-				"rotation": Vector3.ZERO, "component_data": entity_record.get("component_data", {})
-			}
+		if instance_id:
+			print("EntityManager: Processing entity record with instance_id: %s" % instance_id)
+			if not _entity_registry.has(instance_id):
+				_entity_registry[instance_id] = {
+					"instance_id": instance_id, "definition_id": entity_record["definition_id"],
+					"position": Vector3(entity_record.get("position",{}).get("x",0.0), entity_record.get("position",{}).get("y",0.0), entity_record.get("position",{}).get("z",0.0)),
+					"rotation": Vector3.ZERO, "component_data": entity_record.get("component_data", {})
+				}
+		else:
+			push_warning("EntityManager: Entity record in world state missing 'instance_id'. Skipping.")
+
+	print("EntityManager: Staging entities from registry...")
 	for entity_record in entities_to_load:
-		stage_entity(entity_record["instance_id"])
+		var instance_id = entity_record.get("instance_id")
+		if instance_id and _entity_registry.has(instance_id):
+			print("EntityManager: Calling stage_entity for instance_id: %s" % instance_id)
+			stage_entity(instance_id)
+		elif instance_id:
+			push_warning("EntityManager: Instance_id '%s' found in entities_to_load but not in _entity_registry. Skipping stage." % instance_id)
+		else:
+			push_warning("EntityManager: Skipping stage for entity record with no instance_id.")
+	print("Loaded and staged %s persistent root entities from world state." % _entity_registry.size())
+
 
 func request_new_entity(definition_id: String, position: Vector3, name_override: String = "", parent_id: String = "") -> String:
 	var base_name = definition_id.get_file().get_basename()
@@ -49,45 +96,78 @@ func stage_entity(instance_id: String) -> void:
 	if not definition: return
 	var root_node = ClassDB.instantiate(definition.get("base_node_type", "Node3D"))
 	if not is_instance_valid(root_node): return
-	
+
 	root_node.name = instance_id
 	if root_node is Node3D:
 		root_node.position = entity_data.position
 		if entity_data.has("rotation"): root_node.rotation_degrees = entity_data.rotation
-		if definition.has("scale"): root_node.scale = Vector3(definition.scale.x, definition.scale.y, definition.scale.z)
-	
+		if definition.has("scale"): root_node.scale = Vector3(definition.get("scale",{}).get("x",1.0), definition.get("scale",{}).get("y",1.0), definition.get("scale",{}).get("z",1.0))
+
 	var logic_node = EntityFactory.create_entity_logic_node(root_node, entity_data.definition_id, entity_data.get("component_data", {}))
 	if not logic_node: root_node.queue_free(); return
-	
+
 	var components_def = definition.get("components", {})
 	if components_def.has("VisualComponent") and root_node is CollisionObject3D:
 		_add_collision_shape_to_entity(root_node, components_def.VisualComponent)
 
 	_node_to_instance_id_map[root_node] = instance_id
 	if logic_node.has_component("ScheduleComponent"): root_node.add_to_group("has_schedule")
+
+	# --- THIS IS THE CHANGE ---
+	# Check if the staged entity is the ground, and if so, call its registration method.
+	if root_node.get_script() == load("res://script/entities/Ground.gd"):
+		var nav_manager = get_node_or_null("/root/NavigationManager")
+		if is_instance_valid(nav_manager):
+			# Pass the NavigationManager instance to the ground's registration method.
+			if root_node.has_method("register_mesh_with_navigation"):
+				root_node.register_mesh_with_navigation(nav_manager)
+				print("EntityManager: Called register_mesh_with_navigation on Ground.")
+			else:
+				printerr("EntityManager: Ground node script does not have register_mesh_with_navigation method.")
+		else:
+			printerr("EntityManager: NavigationManager singleton not available when staging ground.")
+	# --- END OF CHANGE ---
+
+
 	get_tree().current_scene.add_child(root_node)
+	if is_instance_valid(root_node):
+		print("EntityManager: Staged entity '%s'. Root node valid: %s, Parent: %s, Global Position: %s" % [instance_id, is_instance_valid(root_node), root_node.get_parent(), root_node.global_position])
+	else:
+		printerr("EntityManager: Staged entity '%s'. Root node IS NOT valid after add_child." % instance_id)
+
+
 	EventSystem.emit_event("entity_staged", {"instance_id": instance_id, "node": root_node})
-	
+
 	if definition.has("child_entities"):
 		for child_data in definition.child_entities:
 			var child_rel_pos = Vector3(child_data.get("position",{}).get("x",0), child_data.get("position",{}).get("y",0), child_data.get("position",{}).get("z",0))
 			if root_node is Node3D:
 				request_new_entity(child_data.definition_id, root_node.global_transform * child_rel_pos, child_data.get("name_override", ""), instance_id)
+			else:
+				var position = Vector3.ZERO
+				if root_node is Node2D: position = Vector3(root_node.position.x, root_node.position.y, 0)
+				request_new_entity(child_data.definition_id, position, child_data.get("name_override", ""), instance_id)
+
 
 func unstage_entity(instance_id: String) -> void:
 	var entity_node = get_node_from_instance_id(instance_id)
 	if not is_instance_valid(entity_node): return
 	if entity_node.is_in_group("has_schedule"):
 		entity_node.remove_from_group("has_schedule")
+
+	# We no longer manually clean up navigation regions here.
+	# The NavigationManager handles cleanup when the game closes.
+
+
 	var entity_data = _entity_registry[instance_id]
 	if entity_node is Node3D:
 		entity_data.position = entity_node.position
 		entity_data.rotation = entity_node.rotation_degrees
 	var new_component_data = {}
 	var logic_node = entity_node.get_node_or_null("EntityLogic")
-	if logic_node:
+	if is_instance_valid(logic_node):
 		for component in logic_node.get_children():
-			if component.has_method("get_persistent_data"):
+			if is_instance_valid(component) and component.has_method("get_persistent_data"):
 				var persistent_data = component.get_persistent_data()
 				if persistent_data and not persistent_data.is_empty():
 					new_component_data[component.name] = persistent_data
@@ -108,26 +188,27 @@ func destroy_all_with_tag(tag_id: String) -> void:
 	for node in _node_to_instance_id_map.keys():
 		if not is_instance_valid(node): continue
 		var logic_node = node.get_node_or_null("EntityLogic")
-		if logic_node:
+		if is_instance_valid(logic_node):
 			var tag_comp = logic_node.get_component("TagComponent")
-			if tag_comp and tag_comp.has_tag(tag_id):
+			if is_instance_valid(tag_comp) and tag_comp.has_tag(tag_id):
 				nodes_to_destroy.append(node.name)
 	for id_to_destroy in nodes_to_destroy:
 		destroy_entity_permanently(id_to_destroy)
 
 func add_tag_to_entity(instance_id: String, tag_id: String) -> void:
 	var component = get_entity_component(instance_id, "TagComponent")
-	if component: component.add_tag(tag_id)
+	if is_instance_valid(component): component.add_tag(tag_id)
 
 func set_entity_state(instance_id: String, state_id: String) -> void:
 	var component = get_entity_component(instance_id, "StateComponent")
-	if component: component.push_state(state_id)
+	if is_instance_valid(component): component.push_state(state_id)
 
 func get_entity_component(instance_id: String, component_name: String) -> Node:
 	var node = get_node_from_instance_id(instance_id)
 	if is_instance_valid(node):
 		var logic_node = node.get_node_or_null("EntityLogic")
-		if is_instance_valid(logic_node): return logic_node.get_component(component_name)
+		if is_instance_valid(logic_node):
+			return logic_node.get_component(component_name)
 	return null
 
 func get_node_from_instance_id(instance_id: String) -> Node:
@@ -137,7 +218,7 @@ func get_node_from_instance_id(instance_id: String) -> Node:
 
 func _get_next_uid() -> int: _next_uid += 1; return _next_uid
 
-func _add_collision_shape_to_entity(physics_body, visual_data) -> void:
+func _add_collision_shape_to_entity(physics_body: Node3D, visual_data: Dictionary) -> void:
 	var shape_type = visual_data.get("shape", "").to_lower()
 	if shape_type.is_empty(): return
 	var collision_shape_node = CollisionShape3D.new()
