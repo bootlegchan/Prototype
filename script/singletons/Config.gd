@@ -1,3 +1,4 @@
+# script/singletons/Config.gd
 extends Node
 
 # This script centralizes all hardcoded paths for easy management.
@@ -22,3 +23,7 @@ const TIME_SETTINGS_FILE_PATH = SETTINGS_PATH + "time_settings.json"
 # --- Component Paths ---
 # Corrected path after moving the components folder into the 'script' folder
 const COMPONENT_PATH = "res://script/components/"
+
+func _init() -> void:
+	# --- DIAGNOSTIC PRINT ---
+	print("[DIAGNOSTIC] Config.gd _init() called.")

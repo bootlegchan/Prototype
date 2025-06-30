@@ -1,8 +1,10 @@
+# script/components/ParentContextComponent.gd
 class_name ParentContextComponent
-extends Node
+extends BaseComponent
 
 # Stores the unique instance ID of the parent entity.
 var parent_instance_id: String = ""
 
-func initialize(data: Dictionary) -> void:
+# This function is called automatically by the parent BaseComponent's initialize method.
+func _load_data(data: Dictionary) -> void:
 	parent_instance_id = data.get("parent_id", "")

@@ -1,0 +1,5 @@
+{
+	"name": "Ground Plane",
+	"base_node_type": "StaticBody3D",
+	"scene": "res://scenes/entities/ground.tscn"
+}

@@ -2,14 +2,19 @@
 	"description": "Initial state for the grand integration test.",
 	"entities": [
 		{
+			"instance_id": "world_ground",
+			"definition_id": "world/ground",
+			"position": { "x": 0, "y": 0, "z": 0 }
+		},
+		{
 			"instance_id": "player_character",
 			"definition_id": "characters/player",
-			"position": { "x": 0, "y": 0, "z": 5 }
+			"position": { "x": 0, "y": 1, "z": 5 }
 		},
 		{
 			"instance_id": "main_market_square",
 			"definition_id": "scenery/props/market_square",
-			"position": { "x": 0, "y": 0, "z": 0 }
+			"position": { "x": 0, "y": 1, "z": 0 }
 		}
 	]
 }

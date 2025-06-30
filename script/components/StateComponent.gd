@@ -1,18 +1,17 @@
+# script/components/StateComponent.gd
 class_name StateComponent
-extends Node
+extends BaseComponent
 
 # Stack now stores dictionaries: { "state_id": "...", "context": {...} }
 var _state_stack: Array[Dictionary] = []
-var _entity_name: String = "Unnamed"
 
-func initialize(entity_name: String, data: Dictionary) -> void:
-	_entity_name = entity_name
+# This function is called automatically by the parent BaseComponent's initialize method.
+func _load_data(data: Dictionary) -> void:
 	_state_stack.clear() # Always start with a clean slate.
 	
 	if data.has("saved_data"):
 		# Re-hydrating from a saved state.
-		# --- THIS IS THE FIX ---
-		var saved_stack_data = data["saved_data"].get("state_stack", [])
+		var saved_stack_data = data.get("saved_data", {}).get("state_stack", [])
 		if saved_stack_data is Array:
 			for state_instance in saved_stack_data:
 				if state_instance is Dictionary:
@@ -25,7 +24,7 @@ func initialize(entity_name: String, data: Dictionary) -> void:
 		var initial_state = data.get("initial_state", "common/idle")
 		push_state(initial_state)
 
-
+# We are replacing the parent's persistence function.
 func get_persistent_data() -> Dictionary:
 	return { "state_stack": _state_stack }
 

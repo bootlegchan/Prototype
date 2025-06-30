@@ -4,5 +4,6 @@
 	"start_minute": 0,
 	"start_day": 1,
 	"start_month_index": 5,
-	"start_year": 1
+	"start_year": 1,
+	"log_frequency": "hour"
 }

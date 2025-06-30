@@ -5,6 +5,7 @@
 	"components": {
 		"VisualComponent": { "shape": "capsule", "color": "8080ff" },
 		"TagComponent": { "tags": ["roles/player"] },
-		"InventoryComponent": {}
+		"InventoryComponent": {},
+		"ScheduleComponent": {}
 	}
 }

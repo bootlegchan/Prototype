@@ -1,3 +1,4 @@
+# script/singletons/SchedulingSystem.gd
 extends Node
 
 var _schedule_layers: Dictionary = {}
@@ -6,72 +7,108 @@ func _ready() -> void:
 	_schedule_layers.clear()
 	_load_all_schedule_layers(Config.SCHEDULES_DEFINITION_PATH)
 	print("Loaded %s schedule layer definitions." % _schedule_layers.size())
+	
 	if get_node_or_null("/root/TimeSystem"):
 		TimeSystem.time_updated.connect(_on_time_updated)
 	else:
 		call_deferred("connect_to_time_system")
+	
 	print("SchedulingSystem ready.")
 
 func connect_to_time_system() -> void:
 	if TimeSystem and not TimeSystem.time_updated.is_connected(_on_time_updated):
 		TimeSystem.time_updated.connect(_on_time_updated)
+		print("SchedulingSystem connected to TimeSystem via call_deferred.")
 
 func _load_all_schedule_layers(path: String) -> void:
 	var dir = DirAccess.open(path)
-	if not dir: return
+	if not dir: 
+		printerr("Could not open schedule definitions directory: %s" % path)
+		return
+	
 	dir.list_dir_begin()
 	var item_name = dir.get_next()
 	while item_name != "":
 		if item_name == "." or item_name == "..":
 			item_name = dir.get_next()
 			continue
-		var full_path = "%s/%s" % [path.trim_suffix("/"), item_name]
+			
+		var full_path = path.path_join(item_name)
 		if dir.current_is_dir():
 			_load_all_schedule_layers(full_path)
 		elif item_name.ends_with(".json"):
-			var relative_path = full_path.replace(Config.SCHEDULES_DEFINITION_PATH, "")
-			var definition_id = relative_path.trim_prefix("/").trim_suffix(".json")
+			var base_path = Config.SCHEDULES_DEFINITION_PATH.path_join("") # Ensure trailing slash
+			var relative_path = full_path.lstrip(base_path)
+			var definition_id = relative_path.trim_suffix(".json")
+			
 			var file = FileAccess.open(full_path, FileAccess.READ)
-			_schedule_layers[definition_id] = JSON.parse_string(file.get_as_text())
+			if file:
+				var text = file.get_as_text()
+				file.close()
+				var json = JSON.new()
+				if json.parse(text) == OK:
+					_schedule_layers[definition_id] = json.get_data()
+				else:
+					printerr("Failed to parse schedule JSON for '%s'. Error: %s at line %s" % [full_path, json.get_error_message(), json.get_error_line()])
+
 		item_name = dir.get_next()
+	dir.list_dir_end()
+
 
 func _on_time_updated(date_info: Dictionary) -> void:
 	var entities = get_tree().get_nodes_in_group("has_schedule")
 	for entity in entities:
 		if not is_instance_valid(entity): continue
-		var logic_node = entity.get_node("EntityLogic")
+		
+		var logic_node = entity.get_node_or_null("EntityLogic")
 		if not is_instance_valid(logic_node): continue
+			
 		var schedule_comp = logic_node.get_component("ScheduleComponent")
 		if not schedule_comp: continue
+			
 		var potential_activities = _get_potential_activities_for_entity(schedule_comp, date_info)
 		if potential_activities.is_empty(): continue
+
 		var final_activity_data = ConflictResolutionSystem.resolve(potential_activities)
 		if final_activity_data.is_empty(): continue
+			
 		_execute_activity(entity, final_activity_data)
 
-func _get_potential_activities_for_entity(schedule_comp: ScheduleComponent, date_info: Dictionary) -> Array[Dictionary]:
+func _get_potential_activities_for_entity(schedule_comp, date_info: Dictionary) -> Array[Dictionary]:
 	var activities: Array[Dictionary] = []
 	for layer_id in schedule_comp.schedule_layer_ids:
 		var schedule_data = _schedule_layers.get(layer_id)
 		if schedule_data:
 			activities.append_array(_extract_activities_from_schedule_data(schedule_data, date_info))
+			
 	if not schedule_comp.weekly_schedule.is_empty() or not schedule_comp.specific_events.is_empty():
-		var direct_schedule_data = { "weekly_schedule": schedule_comp.weekly_schedule,
-			"specific_events": schedule_comp.specific_events, "priority": schedule_comp.priority }
+		var direct_schedule_data = {
+			"weekly_schedule": schedule_comp.weekly_schedule,
+			"specific_events": schedule_comp.specific_events,
+			"priority": schedule_comp.priority
+		}
 		activities.append_array(_extract_activities_from_schedule_data(direct_schedule_data, date_info))
+		
 	return activities
 
 func _extract_activities_from_schedule_data(schedule_data: Dictionary, date_info: Dictionary) -> Array[Dictionary]:
 	var found: Array[Dictionary] = []
 	var time_key = "%02d:%02d" % [date_info.hour, date_info.minute]
 	var priority = schedule_data.get("priority", 0)
+	
 	for event in schedule_data.get("specific_events", []):
-		if event.get("day")==date_info.day and event.get("month")==date_info.month_name and event.get("time")==time_key:
-			var activity = event.get("activity", {}).duplicate(); activity["priority"] = priority; found.append(activity)
+		if event.get("day") == date_info.day and event.get("month") == date_info.month_name and event.get("time") == time_key:
+			var activity = event.get("activity", {}).duplicate()
+			activity["priority"] = priority
+			found.append(activity)
+			
 	var weekly = schedule_data.get("weekly_schedule", {})
 	var day_name = date_info.day_of_week_name.to_lower()
 	if weekly.has(day_name) and weekly[day_name].has(time_key):
-		var activity = weekly[day_name][time_key].duplicate(); activity["priority"] = priority; found.append(activity)
+		var activity = weekly[day_name][time_key].duplicate()
+		activity["priority"] = priority
+		found.append(activity)
+		
 	return found
 
 func _execute_activity(entity: Node, activity_data: Dictionary) -> void:
@@ -93,7 +130,9 @@ func _execute_activity(entity: Node, activity_data: Dictionary) -> void:
 	if required_tag and tag_comp and tag_comp.has_tag(required_tag):
 		return
 
-	var context = activity_data.duplicate(); context.erase("state"); context.erase("priority")
+	var context = activity_data.duplicate()
+	context.erase("state")
+	context.erase("priority")
 	state_comp.push_state(state_to_enter, context)
 	print("[SCHEDULER] Entity '%s' new activity: '%s'" % [entity.name, state_to_enter])
 
@@ -105,8 +144,6 @@ func _execute_activity(entity: Node, activity_data: Dictionary) -> void:
 		print("State change on '%s' is triggering spawn list: '%s'" % [entity.name, spawn_list_id])
 		if entity is Node3D: SpawningSystem.execute_spawn_list(spawn_list_id, entity.global_position)
 		
-	# --- THIS IS THE FIX ---
-	# We apply the exact same logic for despawning.
 	if state_data.has("on_enter_despawn_by_tag"):
 		var tag_to_despawn = state_data["on_enter_despawn_by_tag"]
 		print("State change on '%s' is triggering despawn for tag: '%s'" % [entity.name, tag_to_despawn])
