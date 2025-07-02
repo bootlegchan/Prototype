@@ -1,4 +1,3 @@
-# script/components/ScheduleComponent.gd
 class_name ScheduleComponent
 extends BaseComponent
 
@@ -9,9 +8,11 @@ var priority: int = 0
 
 # This function is called automatically by the parent BaseComponent's initialize method.
 func _load_data(data: Dictionary) -> void:
-	# --- DEBUG PRINT ---
-	print("ScheduleComponent on '%s': _load_data called with data: %s" % [_entity_name, data])
-	# --- END DEBUG PRINT ---
+	# --- THIS IS THE FIX ---
+	# The source name is now created once and reused, which is cleaner
+	# and avoids any string formatting errors within function arguments.
+	var source_name = "ScheduleComponent on '%s'" % _entity_name
+	Debug.post("_load_data called with data: %s" % [data], source_name)
 
 	schedule_layer_ids.clear()
 	var layers_from_data = data.get("layers", [])
@@ -19,32 +20,24 @@ func _load_data(data: Dictionary) -> void:
 		for layer in layers_from_data:
 			if layer is String:
 				schedule_layer_ids.append(layer)
-	# --- DEBUG PRINT ---
-	print("ScheduleComponent on '%s': schedule_layer_ids loaded: %s" % [_entity_name, schedule_layer_ids])
-	# --- END DEBUG PRINT ---
+	Debug.post("schedule_layer_ids loaded: %s" % [schedule_layer_ids], source_name)
 
 
 	weekly_schedule = data.get("weekly_schedule", {})
-	# --- DEBUG PRINT ---
-	print("ScheduleComponent on '%s': weekly_schedule loaded (keys): %s" % [_entity_name, weekly_schedule.keys()])
-	# --- END DEBUG PRINT ---
+	Debug.post("weekly_schedule loaded (keys): %s" % [weekly_schedule.keys()], source_name)
 
 	specific_events = data.get("specific_events", [])
-	# --- DEBUG PRINT ---
-	print("ScheduleComponent on '%s': specific_events loaded (count): %d" % [_entity_name, specific_events.size()])
-	# --- END DEBUG PRINT ---
+	Debug.post("specific_events loaded (count): %d" % specific_events.size(), source_name)
 
 	priority = data.get("priority", 0)
-	# --- DEBUG PRINT ---
-	print("ScheduleComponent on '%s': priority loaded: %d" % [_entity_name, priority])
-	# --- END DEBUG PRINT ---
+	Debug.post("priority loaded: %d" % priority, source_name)
 
-	print("ScheduleComponent on '%s' _load_data finished." % _entity_name)
+	Debug.post("_load_data finished.", source_name)
+	# --- END OF FIX ---
 
 
 # This function is called after all components are loaded.
 func _post_initialize() -> void:
-	# --- DEBUG PRINT ---
-	print("ScheduleComponent on '%s': _post_initialize called." % _entity_name)
-	# --- END DEBUG PRINT ---
+	var source_name = "ScheduleComponent on '%s'" % _entity_name
+	Debug.post("_post_initialize called.", source_name)
 	pass

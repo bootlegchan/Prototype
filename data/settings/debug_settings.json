@@ -1,0 +1,17 @@
+{
+	"Debug": false,
+	"Config": false,
+	"EntityManager": false,
+	"EntityFactory": false,
+	"SpawningSystem": false,
+	"SchedulingSystem": false,
+	"TimeSystem": false,
+	"StateRegistry": false,
+	"ItemRegistry": false,
+	"TagRegistry": false,
+	"StateComponent": false,
+	"InventoryComponent": false,
+	"VisualComponent": false,
+	"BaseEntity": false,
+	"NavigationManager": false
+}

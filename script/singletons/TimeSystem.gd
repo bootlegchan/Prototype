@@ -1,4 +1,3 @@
-# script/singletons/TimeSystem.gd
 extends Node
 
 signal time_updated(date_info: Dictionary)
@@ -13,29 +12,21 @@ var current_day: int = 1
 var current_month_index: int = 0
 var current_year: int = 1
 var _total_days_elapsed: int = 0
-var _log_frequency: String = "hour" # Default to logging every hour
+var _log_frequency: String = "hour"
 
 func _ready() -> void:
-	# --- DEBUG PRINT ---
-	print("TimeSystem: _ready called. Loading calendar and settings.")
-	# --- END DEBUG PRINT ---
+	Debug.post("_ready called. Loading calendar and settings.", "TimeSystem")
 	_load_calender()
 	_load_settings()
 	_initialize_total_days()
-	# --- DEBUG PRINT ---
-	print("TimeSystem: _ready finished.")
-	# --- END DEBUG PRINT ---
+	Debug.post("_ready finished.", "TimeSystem")
 
 
 func _load_settings() -> void:
-	# --- DEBUG PRINT ---
-	print("TimeSystem: _load_settings called. Opening time settings file.")
-	# --- END DEBUG PRINT ---
+	Debug.post("_load_settings called. Opening time settings file.", "TimeSystem")
 	var file = FileAccess.open(Config.TIME_SETTINGS_FILE_PATH, FileAccess.READ)
 	if not file:
-		# --- DEBUG PRINT ---
 		printerr("TimeSystem: Could not open time settings file at: ", Config.TIME_SETTINGS_FILE_PATH)
-		# --- END DEBUG PRINT ---
 		return
 
 	var json = JSON.new()
@@ -49,26 +40,17 @@ func _load_settings() -> void:
 		current_day = settings.get("start_day", 1)
 		current_month_index = settings.get("start_month_index", 0)
 		current_year = settings.get("start_year", 1)
-		# Load the new log frequency setting
 		_log_frequency = settings.get("log_frequency", "hour")
-		# --- DEBUG PRINT ---
-		print("TimeSystem: Settings loaded: seconds_per_minute=%s, start_hour=%d, log_frequency=%s" % [_seconds_per_minute, current_hour, _log_frequency])
-		# --- END DEBUG PRINT ---
+		Debug.post("Settings loaded: seconds_per_minute=%s, start_hour=%d, log_frequency=%s" % [_seconds_per_minute, current_hour, _log_frequency], "TimeSystem")
 	else:
-		# --- DEBUG PRINT ---
 		printerr("TimeSystem: Failed to parse JSON for time settings. Error at line %d: %s" % [json.get_error_line(), json.get_error_message()])
-		# --- END DEBUG PRINT ---
 
 
 func _load_calender() -> void:
-	# --- DEBUG PRINT ---
-	print("TimeSystem: _load_calender called. Opening calendar file.")
-	# --- END DEBUG PRINT ---
+	Debug.post("_load_calender called. Opening calendar file.", "TimeSystem")
 	var file = FileAccess.open(Config.CALENDER_FILE_PATH, FileAccess.READ)
 	if not file:
-		# --- DEBUG PRINT ---
 		printerr("TimeSystem: Could not open calendar file at: ", Config.CALENDER_FILE_PATH)
-		# --- END DEBUG PRINT ---
 		return
 
 	var json = JSON.new()
@@ -76,19 +58,13 @@ func _load_calender() -> void:
 	file.close()
 	if json.parse(text) == OK:
 		_calender_data = json.get_data()
-		# --- DEBUG PRINT ---
-		print("TimeSystem: Calendar loaded with %s months and %s days in a week." % [_calender_data.get("months", []).size(), _calender_data.get("days_of_week", []).size()])
-		# --- END DEBUG PRINT ---
+		Debug.post("Calendar loaded with %s months and %s days in a week." % [_calender_data.get("months", []).size(), _calender_data.get("days_of_week", []).size()], "TimeSystem")
 	else:
-		# --- DEBUG PRINT ---
 		printerr("TimeSystem: Failed to parse JSON for calendar. Error at line %d: %s" % [json.get_error_line(), json.get_error_message()])
-		# --- END DEBUG PRINT ---
 
 
 func _initialize_total_days() -> void:
-	# --- DEBUG PRINT ---
-	print("TimeSystem: _initialize_total_days called.")
-	# --- END DEBUG PRINT ---
+	Debug.post("_initialize_total_days called.", "TimeSystem")
 	_total_days_elapsed = 0
 	var months = _calender_data.get("months", [])
 	if months.is_empty(): return
@@ -102,44 +78,31 @@ func _initialize_total_days() -> void:
 
 	var date_info = get_current_date_info()
 	var day_name = date_info.get("day_of_week_name", "Unknown")
-	print("TimeSystem initialized. Total days elapsed: %s. Starting Date: %s" % [_total_days_elapsed, day_name])
-	# --- DEBUG PRINT ---
-	print("TimeSystem: _initialize_total_days finished.")
-	# --- END DEBUG PRINT ---
+	Debug.post("TimeSystem initialized. Total days elapsed: %s. Starting Date: %s" % [_total_days_elapsed, day_name], "TimeSystem")
+	Debug.post("_initialize_total_days finished.", "TimeSystem")
 
 
 func _process(delta: float) -> void:
-	# --- DEBUG PRINT ---
-	# print("TimeSystem: _process called with delta %f." % delta) # Very verbose
-	# --- END DEBUG PRINT ---
 	_current_second += delta
 	if _current_second >= _seconds_per_minute:
 		_current_second = 0.0
 		_advance_minute()
 
 func _advance_minute() -> void:
-	# --- DEBUG PRINT ---
-	# print("TimeSystem: _advance_minute called.") # Very verbose
-	# --- END DEBUG PRINT ---
 	current_minute += 1
 	if current_minute >= 60:
 		current_minute = 0
 		_advance_hour()
-	else: # Only log per-minute if the hour hasn't advanced
+	else:
 		if _log_frequency == "minute":
 			var date_info = get_current_date_info()
-			print("[TIME] Minute advanced. Time is now %s, %02d:%02d." % [date_info.day_of_week_name, date_info.hour, date_info.minute])
+			Debug.post("[TIME] Minute advanced. Time is now %s, %02d:%02d." % [date_info.day_of_week_name, date_info.hour, date_info.minute], "TimeSystem")
 
 	emit_signal("time_updated", get_current_date_info())
-	# --- DEBUG PRINT ---
-	# print("TimeSystem: time_updated signal emitted.") # Very verbose
-	# --- END DEBUG PRINT ---
 
 
 func _advance_hour() -> void:
-	# --- DEBUG PRINT ---
-	print("TimeSystem: _advance_hour called.")
-	# --- END DEBUG PRINT ---
+	Debug.post("_advance_hour called.", "TimeSystem")
 	current_hour += 1
 	if current_hour >= 24:
 		current_hour = 0
@@ -147,16 +110,12 @@ func _advance_hour() -> void:
 
 	if _log_frequency == "hour" or _log_frequency == "minute":
 		var date_info = get_current_date_info()
-		print("[TIME] Hour advanced. Time is now %s, %02d:00." % [date_info.day_of_week_name, date_info.hour])
-	# --- DEBUG PRINT ---
-	print("TimeSystem: _advance_hour finished.")
-	# --- END DEBUG PRINT ---
+		Debug.post("[TIME] Hour advanced. Time is now %s, %02d:00." % [date_info.day_of_week_name, date_info.hour], "TimeSystem")
+	Debug.post("_advance_hour finished.", "TimeSystem")
 
 
 func _advance_day() -> void:
-	# --- DEBUG PRINT ---
-	print("TimeSystem: _advance_day called.")
-	# --- END DEBUG PRINT ---
+	Debug.post("_advance_day called.", "TimeSystem")
 	_total_days_elapsed += 1
 	current_day += 1
 	var month_info = get_current_month_info()
@@ -164,36 +123,24 @@ func _advance_day() -> void:
 		current_day = 1
 		_advance_month()
 	emit_signal("day_started", get_current_date_info())
-	# --- DEBUG PRINT ---
-	print("TimeSystem: day_started signal emitted.")
-	# --- END DEBUG PRINT ---
+	Debug.post("day_started signal emitted.", "TimeSystem")
 
 
 func _advance_month() -> void:
-	# --- DEBUG PRINT ---
-	print("TimeSystem: _advance_month called.")
-	# --- END DEBUG PRINT ---
+	Debug.post("_advance_month called.", "TimeSystem")
 	current_month_index += 1
 	var months = _calender_data.get("months", [])
 	if not months.is_empty() and current_month_index >= months.size():
 		current_month_index = 0
 		current_year += 1
-	# --- DEBUG PRINT ---
-	print("TimeSystem: _advance_month finished. Current month index: %d, Year: %d" % [current_month_index, current_year])
-	# --- END DEBUG PRINT ---
+	Debug.post("_advance_month finished. Current month index: %d, Year: %d" % [current_month_index, current_year], "TimeSystem")
 
 
 func get_current_date_info() -> Dictionary:
-	# --- DEBUG PRINT ---
-	# print("TimeSystem: get_current_date_info called.") # Very verbose
-	# --- END DEBUG PRINT ---
 	var day_names = _calender_data.get("days_of_week", ["Undefined Day"])
 	if day_names.is_empty(): return {}
 
 	var day_of_week_index = _total_days_elapsed % day_names.size()
-	# --- DEBUG PRINT ---
-	# print("TimeSystem: Calculated day_of_week_index: %d" % day_of_week_index) # Very verbose
-	# --- END DEBUG PRINT ---
 	return {
 		"hour": current_hour,
 		"minute": current_minute,
@@ -205,20 +152,11 @@ func get_current_date_info() -> Dictionary:
 
 
 func get_current_month_info() -> Dictionary:
-	# --- DEBUG PRINT ---
-	# print("TimeSystem: get_current_month_info called. Current month index: %d" % current_month_index) # Very verbose
-	# --- END DEBUG PRINT ---
 	var months = _calender_data.get("months", [])
 	if months.is_empty() or current_month_index >= months.size():
-		# --- DEBUG PRINT ---
-		# push_warning("TimeSystem: Months data is empty or current_month_index is out of bounds.") # Very verbose
-		# --- END DEBUG PRINT ---
 		return {}
 	return months[current_month_index]
 
 
 func get_current_month_name() -> String:
-	# --- DEBUG PRINT ---
-	# print("TimeSystem: get_current_month_name called.") # Very verbose
-	# --- END DEBUG PRINT ---
 	return get_current_month_info().get("name", "Error")

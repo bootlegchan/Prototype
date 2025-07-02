@@ -3,10 +3,10 @@ extends Node
 var _state_definitions: Dictionary = {}
 
 func _ready() -> void:
-	print("StateRegistry: _ready called.")
+	Debug.post("_ready called.", "StateRegistry")
 	_load_definitions()
-	print("Loaded %s state definitions." % _state_definitions.size())
-	print("Discovered State IDs: ", _state_definitions.keys())
+	Debug.post("Loaded %s state definitions." % _state_definitions.size(), "StateRegistry")
+	Debug.post("Discovered State IDs: " + str(_state_definitions.keys()), "StateRegistry")
 
 func _load_definitions() -> void:
 	_state_definitions.clear()
@@ -19,7 +19,7 @@ func is_state_defined(state_id: String) -> bool:
 	return _state_definitions.has(state_id)
 
 func _recursive_load_definitions(path: String) -> void:
-	print("StateRegistry: _recursive_load_definitions called for path '%s'." % path)
+	Debug.post("_recursive_load_definitions called for path '%s'." % path, "StateRegistry")
 	var dir = DirAccess.open(path)
 	if not dir:
 		printerr("StateRegistry: Could not open state definitions directory: ", path)
@@ -43,7 +43,7 @@ func _recursive_load_definitions(path: String) -> void:
 			var relative_path = full_path.replace(base_path_to_remove, "")
 			var definition_id = relative_path.trim_suffix(".json")
 
-			print("StateRegistry: Attempting to load state definition: '%s' from path: %s" % [definition_id, full_path])
+			Debug.post("Attempting to load state definition: '%s' from path: %s" % [definition_id, full_path], "StateRegistry")
 
 			var file = FileAccess.open(full_path, FileAccess.READ)
 			if file:
@@ -54,7 +54,7 @@ func _recursive_load_definitions(path: String) -> void:
 					var data = json.get_data()
 					if data is Dictionary:
 						_state_definitions[definition_id] = data
-						print("StateRegistry: Successfully loaded state definition: '%s'" % definition_id)
+						Debug.post("Successfully loaded state definition: '%s'" % definition_id, "StateRegistry")
 					else:
 						printerr("StateRegistry: Parsed JSON for '%s' is not a Dictionary." % full_path)
 				else:

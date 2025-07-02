@@ -1,4 +1,3 @@
-# script/singletons/TagRegistry.gd
 extends Node
 
 var _tag_definitions: Dictionary = {}
@@ -6,8 +5,8 @@ var _tag_definitions: Dictionary = {}
 func _ready() -> void:
 	_tag_definitions.clear()
 	_recursive_load_definitions(Config.TAG_DEFINITION_PATH)
-	print("Loaded %s tag definitions." % _tag_definitions.size())
-	print("Discovered Tag IDs: ", _tag_definitions.keys())
+	Debug.post("Loaded %s tag definitions." % _tag_definitions.size(), "TagRegistry")
+	Debug.post("Discovered Tag IDs: " + str(_tag_definitions.keys()), "TagRegistry")
 
 ## Returns the dictionary definition for a given tag ID, or an empty dictionary if not found.
 func get_tag_definition(tag_id: String) -> Dictionary:
@@ -39,9 +38,7 @@ func _recursive_load_definitions(path: String) -> void:
 			var relative_path = full_path.lstrip(base_path)
 			var definition_id = relative_path.trim_suffix(".json")
 
-			# --- DEBUG PRINT ---
-			print("TagRegistry: Attempting to load tag definition: %s from %s" % [definition_id, full_path])
-			# --- END DEBUG PRINT ---
+			Debug.post("Attempting to load tag definition: %s from %s" % [definition_id, full_path], "TagRegistry")
 
 			var file = FileAccess.open(full_path, FileAccess.READ)
 			if file:
@@ -52,9 +49,7 @@ func _recursive_load_definitions(path: String) -> void:
 					var data = json.get_data()
 					if data is Dictionary:
 						_tag_definitions[definition_id] = data
-						# --- DEBUG PRINT ---
-						print("TagRegistry: Successfully loaded tag definition: %s" % definition_id)
-						# --- END DEBUG PRINT ---
+						Debug.post("Successfully loaded tag definition: %s" % definition_id, "TagRegistry")
 					else:
 						printerr("Parsed JSON for '%s' is not a Dictionary." % full_path)
 				else:

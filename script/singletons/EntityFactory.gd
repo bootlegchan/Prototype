@@ -4,19 +4,19 @@ var _entity_definitions: Dictionary = {}
 var _component_map: Dictionary = {}
 
 func _ready() -> void:
-	print("EntityFactory: _ready called. Loading definitions.")
+	Debug.post("_ready called. Loading definitions.", "EntityFactory")
 	_entity_definitions.clear()
 	_component_map.clear()
 	_recursive_load_definitions(Config.ENTITY_DEFINITION_PATH)
-	print("Loaded %s entity definitions." % _entity_definitions.size())
+	Debug.post("Loaded %s entity definitions." % _entity_definitions.size(), "EntityFactory")
 	_register_all_components(Config.COMPONENT_PATH)
-	print("Registered %s components: " % _component_map.size(), _component_map.keys())
+	Debug.post("Registered %s components: " % _component_map.size() + str(_component_map.keys()), "EntityFactory")
 
 func get_entity_definition(definition_id: String):
 	return _entity_definitions.get(definition_id, null)
 
 func create_entity_logic_node(root_node: Node, definition_id: String, saved_component_data: Dictionary = {}) -> Node:
-	print("EntityFactory: create_entity_logic_node called for definition '%s'." % definition_id)
+	Debug.post("create_entity_logic_node called for definition '%s'." % definition_id, "EntityFactory")
 	var definition: Dictionary = get_entity_definition(definition_id)
 	if not definition:
 		printerr("EntityFactory: Definition '%s' not found." % definition_id)
@@ -30,7 +30,7 @@ func create_entity_logic_node(root_node: Node, definition_id: String, saved_comp
 	var entity_logic_node = base_entity_script.new()
 	entity_logic_node.name = "EntityLogic"
 	root_node.add_child(entity_logic_node)
-	print("EntityFactory: Created and added EntityLogic node.")
+	Debug.post("Created and added EntityLogic node.", "EntityFactory")
 
 	var components_from_def = definition.get("components", {})
 	var all_component_names = components_from_def.keys() + saved_component_data.keys()
@@ -39,7 +39,7 @@ func create_entity_logic_node(root_node: Node, definition_id: String, saved_comp
 		if not unique_component_names.has(comp_name):
 			unique_component_names.append(comp_name)
 
-	print("EntityFactory: Found %d components to add: %s" % [unique_component_names.size(), unique_component_names])
+	Debug.post("Found %d components to add: %s" % [unique_component_names.size(), unique_component_names], "EntityFactory")
 
 	for component_name in unique_component_names:
 		if not _component_map.has(component_name):
@@ -49,9 +49,9 @@ func create_entity_logic_node(root_node: Node, definition_id: String, saved_comp
 		component_node.name = component_name
 		component_node.set_script(_component_map[component_name])
 		entity_logic_node.add_component(component_name, component_node)
-		print("EntityFactory: Added component '%s' to EntityLogic node." % component_name)
+		Debug.post("Added component '%s' to EntityLogic node." % component_name, "EntityFactory")
 
-	print("EntityFactory: Initializing components.")
+	Debug.post("Initializing components.", "EntityFactory")
 	for component_node in entity_logic_node.get_children():
 		var component_name = component_node.name
 		var initial_data = components_from_def.get(component_name, {}).duplicate()
@@ -59,18 +59,18 @@ func create_entity_logic_node(root_node: Node, definition_id: String, saved_comp
 			initial_data["saved_data"] = saved_component_data[component_name]
 
 		if is_instance_valid(component_node) and component_node.has_method("initialize"):
-			print("EntityFactory: Calling initialize on component '%s'." % component_name)
+			Debug.post("Calling initialize on component '%s'." % component_name, "EntityFactory")
 			Callable(component_node, "initialize").callv([initial_data, root_node, entity_logic_node])
 		elif is_instance_valid(component_node):
 			push_warning("EntityFactory: Component '%s' does not have an 'initialize' method." % component_name)
 		else:
 			printerr("EntityFactory: Invalid component node '%s' found after adding." % component_name)
 
-	print("Successfully created entity logic node and components for definition '%s'." % definition_id)
+	Debug.post("Successfully created entity logic node and components for definition '%s'." % definition_id, "EntityFactory")
 	return entity_logic_node
 
 func _recursive_load_definitions(path: String) -> void:
-	print("EntityFactory: _recursive_load_definitions called for path '%s'." % path)
+	Debug.post("_recursive_load_definitions called for path '%s'." % path, "EntityFactory")
 	var dir = DirAccess.open(path)
 	if not dir:
 		printerr("EntityFactory: Could not open entity definitions directory: ", path)
@@ -88,7 +88,7 @@ func _recursive_load_definitions(path: String) -> void:
 			var relative_path = full_path.replace(Config.ENTITY_DEFINITION_PATH, "").lstrip("/")
 			var definition_id = relative_path.trim_suffix(".json")
 
-			print("EntityFactory: Attempting to load entity definition: %s from %s" % [definition_id, full_path])
+			Debug.post("Attempting to load entity definition: %s from %s" % [definition_id, full_path], "EntityFactory")
 
 			var file = FileAccess.open(full_path, FileAccess.READ)
 			if file:
@@ -99,7 +99,7 @@ func _recursive_load_definitions(path: String) -> void:
 					var data = json.get_data()
 					if data is Dictionary:
 						_entity_definitions[definition_id] = data
-						print("EntityFactory: Successfully loaded entity definition: %s" % definition_id)
+						Debug.post("Successfully loaded entity definition: %s" % definition_id, "EntityFactory")
 					else:
 						printerr("EntityFactory: Parsed JSON for '%s' is not a Dictionary." % full_path)
 				else:
@@ -109,7 +109,7 @@ func _recursive_load_definitions(path: String) -> void:
 	dir.list_dir_end()
 
 func _register_all_components(path: String) -> void:
-	print("EntityFactory: _register_all_components called for path '%s'." % path)
+	Debug.post("_register_all_components called for path '%s'." % path, "EntityFactory")
 	var dir = DirAccess.open(path)
 	if not dir:
 		printerr("EntityFactory: Could not open components directory: ", path)
@@ -123,7 +123,7 @@ func _register_all_components(path: String) -> void:
 			if script:
 				var component_name = file_name.get_basename()
 				_component_map[component_name] = script
-				print("EntityFactory: Registered component: %s" % component_name)
+				Debug.post("Registered component: %s" % component_name, "EntityFactory")
 			else:
 				printerr("EntityFactory: Failed to load script for component '%s' at %s." % [file_name.get_basename(), full_path])
 		file_name = dir.get_next()

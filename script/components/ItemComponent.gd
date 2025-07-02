@@ -1,4 +1,3 @@
-# script/components/ItemComponent.gd
 class_name ItemComponent
 extends BaseComponent
 

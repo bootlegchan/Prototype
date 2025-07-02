@@ -6,24 +6,23 @@ var _next_uid: int = 0
 
 func _ready() -> void:
 	load_world_state()
-	print("EntityManager: Calling deferred bake_nav_mesh_after_staging.")
+	Debug.post("Calling deferred bake_nav_mesh_after_staging.", "EntityManager")
 	call_deferred("bake_nav_mesh_after_staging")
 
 
 func bake_nav_mesh_after_staging() -> void:
-	print("EntityManager: bake_nav_mesh_after_staging called.")
+	Debug.post("bake_nav_mesh_after_staging called.", "EntityManager")
 	var nav_manager = get_node_or_null("/root/NavigationManager")
 	if is_instance_valid(nav_manager):
-		print("EntityManager: Triggering NavigationManager bake NavMesh.")
-		# The group name tells our system which entities should be considered for navigation.
+		Debug.post("Triggering NavigationManager bake NavMesh.", "EntityManager")
 		nav_manager.bake_nav_mesh_from_group("walkable_geometry")
-		print("EntityManager: Requested NavigationManager to bake NavMesh.")
+		Debug.post("Requested NavigationManager to bake NavMesh.", "EntityManager")
 	else:
 		printerr("EntityManager: NavigationManager not available for baking after staging.")
 
 
 func load_world_state() -> void:
-	print("EntityManager: load_world_state called. Opening world state file.")
+	Debug.post("load_world_state called. Opening world state file.", "EntityManager")
 	var file = FileAccess.open(Config.WORLD_STATE_FILE_PATH, FileAccess.READ)
 	if not file:
 		printerr("FATAL: Could not open world state file at: ", Config.WORLD_STATE_FILE_PATH)
@@ -39,13 +38,13 @@ func load_world_state() -> void:
 		
 	var world_data: Dictionary = json.get_data()
 	var entities_to_load = world_data.get("entities", [])
-	print("EntityManager: Found %d entities to load from world state." % entities_to_load.size())
+	Debug.post("Found %d entities to load from world state." % entities_to_load.size(), "EntityManager")
 
 	_entity_registry.clear()
 	for entity_record in entities_to_load:
 		var instance_id = entity_record.get("instance_id")
 		if instance_id:
-			print("EntityManager: Processing entity record with instance_id: %s" % instance_id)
+			Debug.post("Processing entity record with instance_id: %s" % instance_id, "EntityManager")
 			if not _entity_registry.has(instance_id):
 				_entity_registry[instance_id] = {
 					"instance_id": instance_id, "definition_id": entity_record["definition_id"],
@@ -55,17 +54,17 @@ func load_world_state() -> void:
 		else:
 			push_warning("EntityManager: Entity record in world state missing 'instance_id'. Skipping.")
 
-	print("EntityManager: Staging entities from registry...")
+	Debug.post("Staging entities from registry...", "EntityManager")
 	for entity_record in entities_to_load:
 		var instance_id = entity_record.get("instance_id")
 		if instance_id and _entity_registry.has(instance_id):
-			print("EntityManager: Calling stage_entity for instance_id: %s" % instance_id)
+			Debug.post("Calling stage_entity for instance_id: %s" % instance_id, "EntityManager")
 			stage_entity(instance_id)
 		elif instance_id:
 			push_warning("EntityManager: Instance_id '%s' found in entities_to_load but not in _entity_registry. Skipping stage." % instance_id)
 		else:
 			push_warning("EntityManager: Skipping stage for entity record with no instance_id.")
-	print("Loaded and staged %s persistent root entities from world state." % _entity_registry.size())
+	Debug.post("Loaded and staged %s persistent root entities from world state." % _entity_registry.size(), "EntityManager")
 
 
 func request_new_entity(definition_id: String, position: Vector3, name_override: String = "", parent_id: String = "") -> String:
@@ -107,25 +106,21 @@ func stage_entity(instance_id: String) -> void:
 
 	_node_to_instance_id_map[root_node] = instance_id
 	if logic_node.has_component("ScheduleComponent"): root_node.add_to_group("has_schedule")
-
-	# --- THIS IS THE CHANGE ---
-	# Decide where to parent the new entity. Static geometry goes into the NavRegion
-	# to be included in the navmesh bake. All other entities go to the scene root.
+	
 	var parent_node = get_tree().current_scene
 	if root_node is StaticBody3D:
-		root_node.add_to_group("walkable_geometry") # Add to group for identification
+		root_node.add_to_group("walkable_geometry")
 		var nav_region = get_tree().current_scene.get_node_or_null("NavRegion")
 		if is_instance_valid(nav_region):
 			parent_node = nav_region
-			print("EntityManager: Parenting static entity '%s' to NavRegion." % instance_id)
+			Debug.post("Parenting static entity '%s' to NavRegion." % instance_id, "EntityManager")
 		else:
 			push_warning("EntityManager: 'NavRegion' not found. Cannot parent '%s' for navmesh baking." % instance_id)
 	
 	parent_node.add_child(root_node)
-	# --- END OF CHANGE ---
 
 	if is_instance_valid(root_node):
-		print("EntityManager: Staged entity '%s'. Root node valid: %s, Parent: %s, Global Position: %s" % [instance_id, is_instance_valid(root_node), root_node.get_parent(), root_node.global_position])
+		Debug.post("Staged entity '%s'. Root node valid: %s, Parent: %s, Global Position: %s" % [instance_id, is_instance_valid(root_node), root_node.get_parent(), root_node.global_position], "EntityManager")
 	else:
 		printerr("EntityManager: Staged entity '%s'. Root node IS NOT valid after add_child." % instance_id)
 

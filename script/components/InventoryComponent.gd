@@ -1,4 +1,3 @@
-# script/components/InventoryComponent.gd
 class_name InventoryComponent
 extends BaseComponent
 
@@ -6,23 +5,23 @@ var _items: Dictionary = {}
 
 # This function is called automatically by the parent BaseComponent's initialize method.
 func _load_data(data: Dictionary) -> void:
-	print("InventoryComponent on '%s': _load_data called with data: %s" % [_entity_name, data])
+	Debug.post("_load_data called with data: %s" % data, "InventoryComponent on '%s'" % _entity_name)
 	_items.clear()
 	
 	if data.has("saved_data"):
 		_items = data.get("saved_data", {}).get("items", {}).duplicate(true)
-		print("InventoryComponent on '%s': Loaded items from saved_data." % _entity_name)
+		Debug.post("Loaded items from saved_data.", "InventoryComponent on '%s'" % _entity_name)
 	elif data.has("initial_items"):
 		var starting_items = data.get("initial_items", {})
-		print("InventoryComponent on '%s': Loading initial items from definition: %s" % [_entity_name, starting_items])
+		Debug.post("Loading initial items from definition: %s" % starting_items, "InventoryComponent on '%s'" % _entity_name)
 		for item_id in starting_items:
 			add_item(item_id, starting_items[item_id])
 			
-	print("InventoryComponent for '%s' _load_data finished. Items: %s" % [_entity_name, _items])
+	Debug.post("_load_data finished. Items: %s" % _items, "InventoryComponent for '%s'" % _entity_name)
 
 # We are replacing the parent's persistence function.
 func get_persistent_data() -> Dictionary:
-	print("InventoryComponent on '%s': get_persistent_data called. Saving items: %s" % [_entity_name, _items])
+	Debug.post("get_persistent_data called. Saving items: %s" % _items, "InventoryComponent on '%s'" % _entity_name)
 	return { "items": _items }
 
 # --- Public API ---
@@ -44,7 +43,7 @@ func add_item(item_id: String, quantity: int = 1):
 		_items[item_id] = min(quantity, max_stack)
 		
 	EventSystem.emit_event("inventory_changed", {"owner_name": _entity_name, "item_id": item_id, "new_quantity": _items[item_id]})
-	print("InventoryComponent on '%s': Added %s of '%s'. New total: %s" % [_entity_name, quantity, item_id, _items[item_id]])
+	Debug.post("Added %s of '%s'. New total: %s" % [quantity, item_id, _items[item_id]], "InventoryComponent on '%s'" % _entity_name)
 	return true
 
 func remove_item(item_id: String, quantity: int = 1):
@@ -56,8 +55,6 @@ func remove_item(item_id: String, quantity: int = 1):
 	
 	if _items[item_id] <= 0:
 		_items.erase(item_id)
-	else:
-		pass # Print statements for quantity changes are verbose and can be added if needed
 
 	EventSystem.emit_event("inventory_changed", {"owner_name": _entity_name, "item_id": item_id, "new_quantity": get_item_count(item_id)})
 	return true
@@ -66,6 +63,6 @@ static func transfer_item(from_inventory, to_inventory, item_id: String, quantit
 	if from_inventory.get_item_count(item_id) >= quantity:
 		if from_inventory.remove_item(item_id, quantity):
 			to_inventory.add_item(item_id, quantity)
-			print("Transferred %s '%s' from '%s' to '%s'." % [quantity, item_id, from_inventory._entity_name, to_inventory._entity_name])
+			Debug.post("Transferred %s '%s' from '%s' to '%s'." % [quantity, item_id, from_inventory._entity_name, to_inventory._entity_name], "InventoryComponent")
 	else:
-		print("Transfer failed. Not enough '%s' in source inventory." % item_id)
+		Debug.post("Transfer failed. Not enough '%s' in source inventory." % item_id, "InventoryComponent")
