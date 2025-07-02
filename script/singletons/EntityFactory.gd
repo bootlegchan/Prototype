@@ -60,15 +60,11 @@ func create_entity_logic_node(root_node: Node, definition_id: String, saved_comp
 
 		if is_instance_valid(component_node) and component_node.has_method("initialize"):
 			print("EntityFactory: Calling initialize on component '%s'." % component_name)
-			# --- THIS IS THE FIX ---
-			# Pass the root_node in the initialize call to match the new signature.
 			Callable(component_node, "initialize").callv([initial_data, root_node, entity_logic_node])
-			# --- END OF FIX ---
 		elif is_instance_valid(component_node):
 			push_warning("EntityFactory: Component '%s' does not have an 'initialize' method." % component_name)
 		else:
 			printerr("EntityFactory: Invalid component node '%s' found after adding." % component_name)
-
 
 	print("Successfully created entity logic node and components for definition '%s'." % definition_id)
 	return entity_logic_node

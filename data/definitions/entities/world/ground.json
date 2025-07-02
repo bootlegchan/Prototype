@@ -3,7 +3,7 @@
 	"base_node_type": "StaticBody3D",
 	"components": {
 		"VisualComponent": {
-			"asset_path": "res://assets/world/ground.tscn"
+			"asset_path": "res://assets/scenes/world/ground.tscn"
 		}
 	}
 }
