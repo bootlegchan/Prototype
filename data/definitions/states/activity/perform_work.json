@@ -1,4 +1,5 @@
 {
+	"name": "Perform Work",
 	"description": "Performing a work-related task at a specific location.",
 	"can_move": false,
 	"interruptible": true

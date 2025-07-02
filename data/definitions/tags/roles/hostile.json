@@ -1,4 +1,5 @@
 {
+	"name": "Hostile",
 	"description": "This entity is aggressive towards players and friendlies.",
 	"effects": []
 }

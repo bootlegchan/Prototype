@@ -1,5 +1,5 @@
 {
-	"name": "Wandering Merchant",
+	"name": "Silas Croft",
 	"base_node_type": "CharacterBody3D",
 	"scale": { "x": 1, "y": 2, "z": 1 },
 	"components": {
@@ -7,12 +7,17 @@
 		"StateComponent": { "initial_state": "common/idle" },
 		"InventoryComponent": {
 			"initial_items": {
-				"consumable/apple": 1
+				"consumable/apple": 10
 			}
 		},
-		"TagComponent": { "tags": ["roles/merchant"] },
+		"TagComponent": { "tags": ["vendor", "merchant"] },
 		"ScheduleComponent": {
 			"layers": ["roles/merchant"]
+		},
+		"NavigationComponent": {},
+		"MovementComponent": {
+			"movement_speed": 2.5,
+			"rotation_speed": 5.0
 		}
 	}
 }

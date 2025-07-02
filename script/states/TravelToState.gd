@@ -1,45 +1,27 @@
-# script/states/TravelToState.gd
-extends BaseComponent # Inherit from BaseComponent
+extends BaseComponent
 
 var _nav_component: NavigationComponent = null
-var _destination_marker_id: String = "" # Store the marker ID
+var _destination_marker_id: String = ""
 
 func _load_data(data: Dictionary) -> void:
-	# --- DEBUG PRINT ---
-	print("TravelToState on '%s': _load_data called with data: %s" % [_entity_name, data])
-	# --- END DEBUG PRINT ---
-	pass # No specific data loading for this state
+	Debug.post("_load_data called with data: %s" % data, "TravelToState on '%s'" % _entity_name)
+	pass
 
 func _post_initialize() -> void:
-	# --- DEBUG PRINT ---
-	print("TravelToState on '%s': _post_initialize called." % _entity_name)
-	# --- END DEBUG PRINT ---
+	var source_name = "TravelToState on '%s'" % _entity_name
+	Debug.post("_post_initialize called.", source_name)
 
-	# Get the NavigationComponent sibling
 	_nav_component = get_sibling_component("NavigationComponent")
 	
-	# --- DEBUG PRINT ---
-	print("TravelToState on '%s': NavigationComponent valid: %s" % [_entity_name, is_instance_valid(_nav_component)])
-	# --- END DEBUG PRINT ---
+	Debug.post("NavigationComponent valid: %s" % is_instance_valid(_nav_component), source_name)
 
 	if not is_instance_valid(_nav_component):
 		printerr("TravelToState on '%s': Entity is missing a NavigationComponent or it's invalid." % _entity_name)
-		# We need to signal to the state machine that this state can't proceed.
-		# The state machine would need a mechanism for this, or the component should handle it.
-		# For now, we'll just log an error.
-
-	# The context is passed in the push_state call and is stored by the StateComponent.
-	# We need to access the context through the state_comp reference passed to on_enter.
-	# The state_comp reference itself is passed to on_enter, which is an instance of StateComponent.
-	# We need to get the context from the state_comp's internal stack.
-	# This suggests a need for a method on StateComponent to retrieve current context.
-	# For now, we'll retrieve it within on_enter.
 
 
 func on_enter(state_comp: Node, context: Dictionary) -> void:
-	# --- DEBUG PRINT ---
-	print("TravelToState on '%s': on_enter called with context: %s" % [_entity_name, context])
-	# --- END DEBUG PRINT ---
+	var source_name = "TravelToState on '%s'" % _entity_name
+	Debug.post("on_enter called with context: %s" % context, source_name)
 
 	_nav_component = state_comp.get_component("NavigationComponent")
 
@@ -60,36 +42,25 @@ func on_enter(state_comp: Node, context: Dictionary) -> void:
 		state_comp.pop_state()
 		return
 
-	# Connect to the navigation signals to know when to exit this state.
-	# Ensure not already connected to prevent duplicate connections after re-staging.
-	if _nav_component: # Check if navigation component is valid
+	if is_instance_valid(_nav_component):
 		if not _nav_component.destination_reached.is_connected(Callable(state_comp, "pop_state")):
 			_nav_component.destination_reached.connect(Callable(state_comp, "pop_state"))
-			print("TravelToState on '%s': Connected destination_reached signal." % _entity_name)
+			Debug.post("Connected destination_reached signal.", source_name)
 		if not _nav_component.pathfinding_failed.is_connected(Callable(state_comp, "pop_state")):
 			_nav_component.pathfinding_failed.connect(Callable(state_comp, "pop_state"))
-			print("TravelToState on '%s': Connected pathfinding_failed signal." % _entity_name)
+			Debug.post("Connected pathfinding_failed signal.", source_name)
 
-
-	# Command the navigation component to start moving.
 	_nav_component.set_target_location(destination_marker.global_position)
-	print("TravelToState on '%s': Called set_target_location with %s." % [_entity_name, destination_marker.global_position])
+	Debug.post("Called set_target_location with %s." % destination_marker.global_position, source_name)
 
 
 func on_exit(state_comp: Node) -> void:
-	# --- DEBUG PRINT ---
-	print("TravelToState on '%s': on_exit called." % _entity_name)
-	# --- END DEBUG PRINT ---
-	# It's crucial to disconnect from signals to prevent memory leaks and bugs
-	# when the state is exited for any reason.
-	if _nav_component: # Check if nav component is valid
+	var source_name = "TravelToState on '%s'" % _entity_name
+	Debug.post("on_exit called.", source_name)
+	if is_instance_valid(_nav_component):
 		if _nav_component.destination_reached.is_connected(Callable(state_comp, "pop_state")):
 			_nav_component.destination_reached.disconnect(Callable(state_comp, "pop_state"))
-			print("TravelToState on '%s': Disconnected destination_reached signal." % _entity_name)
+			Debug.post("Disconnected destination_reached signal.", source_name)
 		if _nav_component.pathfinding_failed.is_connected(Callable(state_comp, "pop_state")):
 			_nav_component.pathfinding_failed.disconnect(Callable(state_comp, "pop_state"))
-			print("TravelToState on '%s': Disconnected pathfinding_failed signal." % _entity_name)
-
-# Add on_process if needed for state logic that runs every frame
-# func on_process(state_comp: Node, delta: float) -> void:
-# 	pass # Example on_process implementation
+			Debug.post("Disconnected pathfinding_failed signal.", source_name)

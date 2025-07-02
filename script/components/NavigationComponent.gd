@@ -1,65 +1,63 @@
 class_name NavigationComponent
 extends BaseComponent
 
-signal path_updated(new_path: PackedVector3Array)
 signal pathfinding_failed
 signal destination_reached
 
-var target_position: Vector3
-var current_path: PackedVector3Array = []
-var _parent_body: CharacterBody3D = null
-
-func _load_data(data: Dictionary) -> void:
-	Debug.post("_load_data called with data: %s" % data, "NavigationComponent on '%s'" % _entity_name)
-	pass
+var _nav_agent: NavigationAgent3D
 
 func _post_initialize() -> void:
-	Debug.post("_post_initialize called. Attempting to get parent CharacterBody3D.", "NavigationComponent on '%s'" % _entity_name)
-	_parent_body = get_parent().get_parent() as CharacterBody3D
-	if not is_instance_valid(_parent_body):
-		printerr("NavigationComponent on '%s': has no valid parent CharacterBody3D after post-initialize." % _entity_name)
-
-func set_target_location(new_target: Vector3) -> void:
-	Debug.post("set_target_location called with new_target: %s" % new_target, "NavigationComponent on '%s'" % _entity_name)
-	if not is_instance_valid(NavigationManager):
-		printerr("NavigationComponent on '%s': NavigationManager singleton not available." % _entity_name)
-		emit_signal("pathfinding_failed")
-		return
-
-	target_position = NavigationManager.get_closest_point_on_navmesh(new_target)
+	var source_name = "NavigationComponent on '%s'" % _entity_name
+	Debug.post("_post_initialize called.", source_name)
 	
-	Debug.post("New target set to %s" % target_position, "NavigationComponent on '%s'" % _entity_name)
-	_request_new_path()
-
-func _request_new_path() -> void:
-	Debug.post("_request_new_path called.", "NavigationComponent on '%s'" % _entity_name)
-	if not is_instance_valid(_parent_body):
-		printerr("NavigationComponent on '%s': has no valid parent CharacterBody3D when requesting path." % _entity_name)
-		emit_signal("pathfinding_failed")
-		return
-
-	current_path.clear()
+	_nav_agent = NavigationAgent3D.new()
+	_nav_agent.path_desired_distance = 0.5
+	_nav_agent.target_desired_distance = 0.5
 	
-	Debug.post("Requesting path from %s to %s on map %s" % [_parent_body.global_position, target_position, NavigationServer3D.agent_get_map(_parent_body.get_rid())], "NavigationComponent on '%s'" % _entity_name)
+	# The NavigationAgent3D must be a direct child of the CharacterBody3D (entity root)
+	_entity_root.add_child(_nav_agent)
+	_nav_agent.set_owner(_entity_root) # Important for proper scene tree management
 
-	var new_path = NavigationManager.get_navigation_path(_parent_body.global_position, target_position)
+	_nav_agent.target_reached.connect(_on_target_reached)
+	_nav_agent.path_changed.connect(_on_path_changed)
 	
-	Debug.post("Received path: %s" % str(new_path), "NavigationComponent on '%s'" % _entity_name)
+	Debug.post("NavigationAgent3D created and initialized.", source_name)
 
-	if new_path.is_empty():
-		printerr("NavigationComponent on '%s': Pathfinding failed to find a path." % _entity_name)
-		emit_signal("pathfinding_failed")
+func _physics_process(_delta: float) -> void:
+	# This _physics_process is actually handled by MovementComponent.
+	# We can remove the body of this function, as MovementComponent will query the agent.
+	pass # Remove the content if MovementComponent is driving physics_process.
+
+func set_target_location(new_target_pos: Vector3):
+	var source_name = "NavigationComponent on '%s'" % _entity_name
+	Debug.post("Setting target location to: %s" % str(new_target_pos), source_name)
+	if is_instance_valid(_nav_agent):
+		_nav_agent.target_position = new_target_pos
 	else:
-		current_path = new_path
-		Debug.post("New path found with %s points." % current_path.size(), "NavigationComponent on '%s'" % _entity_name)
-		emit_signal("path_updated", current_path)
+		printerr("NavigationComponent on '%s': NavigationAgent3D is not valid." % _entity_name)
+		emit_signal("pathfinding_failed")
 
-func advance_path() -> void:
-	Debug.post("advance_path called. Current path size: %d" % current_path.size(), "NavigationComponent on '%s'" % _entity_name)
-	if not current_path.is_empty(): current_path.remove_at(0)
-	if current_path.is_empty():
-		Debug.post("Path is now empty, emitting destination_reached.", "NavigationComponent on '%s'" % _entity_name)
-		emit_signal("destination_reached")
+func get_next_path_position() -> Vector3:
+	if is_instance_valid(_nav_agent):
+		return _nav_agent.get_next_path_position()
+	return _entity_root.global_position
 
-func get_current_path() -> PackedVector3Array: return current_path
-func is_path_active() -> bool: return not current_path.is_empty()
+func is_navigation_finished() -> bool:
+	if is_instance_valid(_nav_agent):
+		return _nav_agent.is_navigation_finished()
+	return true
+
+func _on_target_reached():
+	var source_name = "NavigationComponent on '%s'" % _entity_name
+	Debug.post("Target reached.", source_name)
+	emit_signal("destination_reached")
+
+func _on_path_changed():
+	var source_name = "NavigationComponent on '%s'" % _entity_name
+	Debug.post("Path changed.", source_name)
+
+# --- THIS IS THE FIX ---
+# New getter to safely provide the NavigationAgent3D instance.
+func get_navigation_agent() -> NavigationAgent3D:
+	return _nav_agent
+# --- END OF FIX ---

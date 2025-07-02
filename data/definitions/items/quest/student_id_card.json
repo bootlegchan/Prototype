@@ -3,11 +3,19 @@
 	"base_node_type": "StaticBody3D",
 	"scale": { "x": 0.1, "y": 0.01, "z": 0.15 },
 	"components": {
-		"VisualComponent": { "shape": "box", "color": "F0FFF0" },
+		"VisualComponent": { 
+			"shape": "box", 
+			"color": "#F0FFF0" 
+		},
 		"ItemComponent": {
+			"definition_id": "quest/student_id_card",
 			"display_name": "Student ID Card",
 			"description": "An ID card for a student named 'Jessica'.",
-			"stackable": false
+			"stackable": false,
+			"quantity": 1
+		},
+		"TagComponent": {
+			"tags": ["item", "quest_item"]
 		}
 	}
 }

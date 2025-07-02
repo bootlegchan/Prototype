@@ -1,12 +1,14 @@
 {
 	"name": "Classroom",
-	"base_node_type": "StaticBody3D",
+	"base_node_type": "Node3D",
 	"scale": { "x": 8, "y": 4, "z": 8 },
 	"components": {
-		"VisualComponent": { "shape": "box", "color": "F5DEB3" },
 		"LocationComponent": {
 			"type": "classroom",
 			"name": "Generic Classroom"
+		},
+		"TagComponent": {
+			"tags": ["room", "classroom"]
 		}
 	}
 }

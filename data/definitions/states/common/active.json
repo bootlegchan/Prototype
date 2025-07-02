@@ -1,4 +1,7 @@
 {
+	"name": "Active",
 	"description": "The entity is active and may perform special actions.",
+	"can_move": true,
+	"interruptible": true,
 	"on_enter_spawn": "monsters/slime_ambush"
 }

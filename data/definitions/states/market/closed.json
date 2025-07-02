@@ -1,5 +1,8 @@
 {
+	"name": "Market Closed",
 	"description": "The market is closed. All vendors should be despawned.",
+	"can_move": false,
+	"interruptible": false,
 	"on_enter_despawn_by_tag": "roles/merchant",
 	"tag_to_apply_on_enter": "event_triggered/market_closed_today"
 }

@@ -2,7 +2,7 @@
 	"description": "Spawns the vendors for a typical market day.",
 	"spawns": [
 		{
-			"definition_id": "characters/merchant",
+			"definition_id": "characters/silas_croft",
 			"position": { "x": 0, "y": 0, "z": -2 }
 		}
 	]

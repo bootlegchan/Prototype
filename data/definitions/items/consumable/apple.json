@@ -5,9 +5,10 @@
 	"components": {
 		"VisualComponent": {
 			"shape": "sphere",
-			"color": "FF0000"
+			"color": "#FF0000"
 		},
 		"ItemComponent": {
+			"definition_id": "consumable/apple",
 			"display_name": "Red Apple",
 			"description": "A crisp and juicy red apple.",
 			"stackable": true,
@@ -15,7 +16,7 @@
 			"quantity": 1
 		},
 		"TagComponent": {
-			"tags": ["properties/flammable"]
+			"tags": ["item", "consumable", "food", "properties/flammable"]
 		}
 	}
 }

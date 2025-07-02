@@ -1,4 +1,7 @@
 {
+	"name": "Market Open",
 	"description": "The market is open for business, vendors should appear.",
+	"can_move": false,
+	"interruptible": false,
 	"on_enter_spawn": "market_day_vendors"
 }

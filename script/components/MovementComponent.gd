@@ -4,65 +4,74 @@ extends BaseComponent
 var movement_speed: float = 3.0
 var rotation_speed: float = 5.0 # Radians per second
 
-@onready var _parent_body: CharacterBody3D = get_parent().get_parent() as CharacterBody3D
-var _nav_component: NavigationComponent = null
+var _character_body: CharacterBody3D = null
+# --- THIS IS THE FIX ---
+# Instead of storing NavigationAgent3D directly, we will get it via NavigationComponent.
+var _nav_component_ref: NavigationComponent = null 
+# --- END OF FIX ---
 
 # This function is called automatically by the parent BaseComponent's initialize method.
 func _load_data(data: Dictionary) -> void:
+	var source_name = "MovementComponent on '%s'" % _entity_name
+	Debug.post("_load_data called with data: %s" % data, source_name)
 	movement_speed = data.get("movement_speed", 3.0)
 	rotation_speed = data.get("rotation_speed", 5.0)
 
 # This function is called after all components are loaded.
 func _post_initialize() -> void:
-	_nav_component = get_sibling_component("NavigationComponent")
+	var source_name = "MovementComponent on '%s'" % _entity_name
+	Debug.post("_post_initialize called.", source_name)
 	
-	if is_instance_valid(_nav_component):
-		_nav_component.destination_reached.connect(on_destination_reached)
-		_nav_component.pathfinding_failed.connect(on_pathfinding_failed)
-		Debug.post("Successfully connected to NavigationComponent.", "MovementComponent on '%s'" % _entity_name)
+	if is_instance_valid(_entity_root) and _entity_root is CharacterBody3D:
+		_character_body = _entity_root
 	else:
-		printerr("MovementComponent on '%s': could not find NavigationComponent sibling." % _entity_name)
+		printerr("MovementComponent on '%s': _entity_root is not a valid CharacterBody3D. Movement will not function." % _entity_name)
+		return # Cannot proceed if parent is not a CharacterBody3D.
+	
+	# --- THIS IS THE FIX ---
+	# Get a reference to the sibling NavigationComponent.
+	_nav_component_ref = get_sibling_component("NavigationComponent")
 
-func _physics_process(delta: float) -> void:
-	if not is_instance_valid(_parent_body) or not is_instance_valid(_nav_component):
-		Debug.post("Bailing out of _physics_process. Parent or NavComponent invalid.", "MovementComponent on '%s'" % _entity_name)
+	if not is_instance_valid(_nav_component_ref):
+		printerr("MovementComponent on '%s': could not find NavigationComponent sibling. Movement will not function." % _entity_name)
+	# --- END OF FIX ---
+
+
+func _physics_process(_delta: float) -> void:
+	# --- THIS IS THE FIX ---
+	# Access the NavigationAgent3D safely via the NavigationComponent.
+	if not is_instance_valid(_character_body) or not is_instance_valid(_nav_component_ref):
 		return
-		
-	if not _nav_component.is_path_active():
-		_parent_body.velocity = Vector3.ZERO
+	
+	var _nav_agent = _nav_component_ref.get_navigation_agent() # Get the agent instance from the sibling.
+	if not is_instance_valid(_nav_agent):
+		return # Agent not ready or invalid.
+
+	if _nav_agent.is_navigation_finished():
+		_character_body.velocity = Vector3.ZERO
 		return
 
-	Debug.post("Following active path.", "MovementComponent on '%s'" % _entity_name)
+	var current_location = _character_body.global_transform.origin
+	var next_location = _nav_agent.get_next_path_position()
+	var new_velocity = (next_location - current_location).normalized() * movement_speed
 
-	var path = _nav_component.get_current_path()
-	if path.is_empty():
-		return
-		
-	var next_point = path[0]
+	_character_body.velocity = new_velocity
+	_character_body.move_and_slide()
 	
-	var current_pos = _parent_body.global_position
-	var direction = current_pos.direction_to(next_point)
-	direction.y = 0
-	
-	if direction.length_squared() > 0.0001:
-		var target_basis = Basis.looking_at(direction.normalized())
-		_parent_body.basis = _parent_body.basis.slerp(target_basis, delta * rotation_speed)
-	
-	_parent_body.velocity = _parent_body.basis.z * -movement_speed
-	_parent_body.move_and_slide()
-	
-	if current_pos.distance_to(next_point) < 0.5:
-		_nav_component.advance_path()
+	var direction = _character_body.velocity.normalized()
+	if direction.length() > 0:
+		var look_at_basis = Basis.looking_at(direction)
+		_character_body.basis = _character_body.basis.slerp(look_at_basis, rotation_speed * _delta)
+# --- END OF FIX ---
 
-
-# Called when the NavigationComponent signals that the final destination has been reached.
 func on_destination_reached() -> void:
-	if is_instance_valid(_parent_body):
-		_parent_body.velocity = Vector3.ZERO
-	Debug.post("Destination reached, stopping movement.", "MovementComponent on '%s'" % _entity_name)
+	var source_name = "MovementComponent on '%s'" % _entity_name
+	if is_instance_valid(_character_body):
+		_character_body.velocity = Vector3.ZERO
+	Debug.post("Destination reached, stopping movement.", source_name)
 	
-# Added handling for pathfinding failures
 func on_pathfinding_failed() -> void:
-	if is_instance_valid(_parent_body):
-		_parent_body.velocity = Vector3.ZERO
-	Debug.post("Pathfinding failed, stopping movement.", "MovementComponent on '%s'" % _entity_name)
+	var source_name = "MovementComponent on '%s'" % _entity_name
+	if is_instance_valid(_character_body):
+		_character_body.velocity = Vector3.ZERO
+	Debug.post("Pathfinding failed, stopping movement.", source_name)

@@ -21,3 +21,8 @@ use_in_baked_mesh = false
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="."]
 shape = SubResource("ConcavePolygonShape3D_s3y3k")
+# --- THIS IS THE FIX ---
+# By setting the navigation layer, we explicitly tell the NavigationRegion3D
+# to use this collision shape for baking the navmesh.
+navigation_layer = 1
+# --- END OF FIX ---

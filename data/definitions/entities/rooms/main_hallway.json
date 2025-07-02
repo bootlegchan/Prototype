@@ -1,0 +1,22 @@
+{
+	"name": "Main Hallway",
+	"base_node_type": "Node3D",
+	"scale": { "x": 4, "y": 4, "z": 20 },
+	"components": {
+		"TagComponent": { "tags": ["room", "hallway"] }
+	},
+	"connections": [
+		{
+			"id": "classroom_door_1",
+			"type": "doorway",
+			"position": { "x": -2.5, "y": 0, "z": -5 },
+			"tags": ["connects_to_classroom"]
+		},
+		{
+			"id": "classroom_door_2",
+			"type": "doorway",
+			"position": { "x": 2.5, "y": 0, "z": -5 },
+			"tags": ["connects_to_classroom"]
+		}
+	]
+}

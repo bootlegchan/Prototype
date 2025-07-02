@@ -1,8 +1,9 @@
 {
 	"name": "Alex",
 	"base_node_type": "CharacterBody3D",
+	"scale": { "x": 1, "y": 2, "z": 1 },
 	"components": {
-		"VisualComponent": { "shape": "capsule", "color": "ADD8E6" },
+		"VisualComponent": { "shape": "capsule", "color": "#ADD8E6" },
 		"StateComponent": { "initial_state": "common/idle" },
 		"ScheduleComponent": {
 			"layers": [
@@ -10,6 +11,11 @@
 				"jobs/part_time_cleaner",
 				"personal/alex_smith"
 			]
+		},
+		"NavigationComponent": {},
+		"MovementComponent": {
+			"movement_speed": 4.0,
+			"rotation_speed": 10.0
 		}
 	}
 }

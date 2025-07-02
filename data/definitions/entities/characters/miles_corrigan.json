@@ -1,0 +1,22 @@
+{
+	"name": "Miles Corrigan",
+	"base_node_type": "CharacterBody3D",
+	"scale": { "x": 1, "y": 2, "z": 1 },
+	"components": {
+		"VisualComponent": {
+			"shape": "capsule",
+			"color": "#B0C4DE"
+		},
+		"TagComponent": {
+			"tags": ["guard"]
+		},
+		"StateComponent": {
+			"initial_state": "guard/patrolling"
+		},
+		"NavigationComponent": {},
+		"MovementComponent": {
+			"movement_speed": 3.0,
+			"rotation_speed": 7.0
+		}
+	}
+}

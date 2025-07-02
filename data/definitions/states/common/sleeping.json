@@ -1,5 +1,6 @@
 {
+	"name": "Sleeping",
 	"description": "The entity is asleep and cannot be easily disturbed.",
-	"interruptible": false,
-	"can_move": false
+	"can_move": false,
+	"interruptible": false
 }

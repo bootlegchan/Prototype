@@ -1,9 +1,0 @@
-{
-	"name": "Market Stall",
-	"base_node_type": "StaticBody3D",
-	"scale": { "x": 4, "y": 2.5, "z": 2 },
-	"components": {
-		"VisualComponent": { "shape": "box", "color": "A0522D" },
-		"TagComponent": { "tags": ["Scenery", "Interactable"] }
-	}
-}

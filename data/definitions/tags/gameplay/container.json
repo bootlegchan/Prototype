@@ -1,4 +1,5 @@
 {
+	"name": "Container",
 	"description": "This entity can hold items.",
 	"effects": [
 		{

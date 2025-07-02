@@ -1,5 +1,21 @@
 {
-	"display_name": "Iron Sword",
-	"description": "A basic but reliable iron sword.",
-	"stackable": false
+	"name": "Iron Sword",
+	"base_node_type": "RigidBody3D",
+	"scale": { "x": 0.2, "y": 1.0, "z": 0.1 },
+	"components": {
+		"VisualComponent": {
+			"shape": "box",
+			"color": "#C0C0C0"
+		},
+		"ItemComponent": {
+			"definition_id": "general/sword",
+			"display_name": "Iron Sword",
+			"description": "A basic but reliable iron sword.",
+			"stackable": false,
+			"quantity": 1
+		},
+		"TagComponent": {
+			"tags": ["item", "weapon", "melee"]
+		}
+	}
 }

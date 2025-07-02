@@ -1,4 +1,5 @@
 {
+	"name": "Chatting",
 	"description": "Engaged in conversation with another entity.",
 	"interruptible": false,
 	"can_move": false

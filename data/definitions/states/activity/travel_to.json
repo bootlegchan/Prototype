@@ -1,4 +1,7 @@
 {
+	"name": "Travel To",
 	"description": "Travel to a specific location.",
+	"can_move": true,
+	"interruptible": true,
 	"script_path": "res://script/states/TravelToState.gd"
 }

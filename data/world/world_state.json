@@ -1,5 +1,5 @@
 {
-	"description": "Initial state for the grand integration test.",
+	"description": "Initial state for the grand integration test. Spawns the main locations and the player.",
 	"entities": [
 		{
 			"instance_id": "world_ground",
@@ -9,17 +9,17 @@
 		{
 			"instance_id": "player_character",
 			"definition_id": "characters/player",
-			"position": { "x": 5, "y": 1, "z": 5 }
+			"position": { "x": 5, "y": 1, "z": 15 }
 		},
 		{
 			"instance_id": "main_market_square",
-			"definition_id": "scenery/props/market_square",
-			"position": { "x": 0, "y": 1, "z": 0 }
+			"definition_id": "locations/market_square",
+			"position": { "x": 0, "y": 0, "z": 0 }
 		},
 		{
-			"instance_id": "test_merchant",
-			"definition_id": "characters/merchant",
-			"position": { "x": 2, "y": 1, "z": 2 }
+			"instance_id": "oakwood_school",
+			"definition_id": "buildings/school",
+			"position": { "x": 50, "y": 0, "z": -50 }
 		}
 	]
 }

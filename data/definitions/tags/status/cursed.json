@@ -1,4 +1,5 @@
 {
+	"name": "Cursed",
 	"description": "The entity is afflicted by a negative magical curse.",
 	"effects": [
 		{ "type": "StatModifier", "stat": "luck", "value": -10 }

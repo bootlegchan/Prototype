@@ -1,4 +1,5 @@
 {
+	"name": "Flammable",
 	"description": "This entity can catch fire.",
 	"effects": [
 		{

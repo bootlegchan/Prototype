@@ -2,7 +2,17 @@
 	"description": "The work schedule for a part-time cleaner.",
 	"priority": 50,
 	"weekly_schedule": {
-		"monday":    { "18:00": { "state": "activity/perform_work", "location": "library" } },
-		"wednesday": { "18:00": { "state": "activity/perform_work", "location": "town_hall" } }
+		"monday": {
+			"18:00": {
+				"state": "activity/perform_work",
+				"location": "library"
+			}
+		},
+		"wednesday": {
+			"18:00": {
+				"state": "activity/perform_work",
+				"location": "town_hall"
+			}
+		}
 	}
 }

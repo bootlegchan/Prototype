@@ -1,4 +1,6 @@
 {
+	"name": "Guard Idle",
 	"description": "Standing still, waiting for something to happen.",
-	"interruptible": true
+	"interruptible": true,
+	"can_move": false
 }

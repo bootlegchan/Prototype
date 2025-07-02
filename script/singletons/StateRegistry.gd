@@ -10,7 +10,8 @@ func _ready() -> void:
 
 func _load_definitions() -> void:
 	_state_definitions.clear()
-	_recursive_load_definitions(Config.STATE_DEFINITION_PATH)
+	# Call the recursive function, passing the initial base path
+	_recursive_load_definitions(Config.STATE_DEFINITION_PATH, Config.STATE_DEFINITION_PATH)
 
 func get_state_definition(state_id: String) -> Dictionary:
 	return _state_definitions.get(state_id, {})
@@ -18,11 +19,13 @@ func get_state_definition(state_id: String) -> Dictionary:
 func is_state_defined(state_id: String) -> bool:
 	return _state_definitions.has(state_id)
 
-func _recursive_load_definitions(path: String) -> void:
-	Debug.post("_recursive_load_definitions called for path '%s'." % path, "StateRegistry")
-	var dir = DirAccess.open(path)
+# --- THIS IS THE FIX ---
+# Added 'base_load_path' argument to correctly build definition IDs.
+func _recursive_load_definitions(current_path: String, base_load_path: String) -> void:
+	Debug.post("_recursive_load_definitions called for path '%s'." % current_path, "StateRegistry")
+	var dir = DirAccess.open(current_path)
 	if not dir:
-		printerr("StateRegistry: Could not open state definitions directory: ", path)
+		printerr("StateRegistry: Could not open state definitions directory: ", current_path)
 		return
 
 	dir.list_dir_begin()
@@ -32,15 +35,13 @@ func _recursive_load_definitions(path: String) -> void:
 			item_name = dir.get_next()
 			continue
 
-		var full_path = path.path_join(item_name)
+		var full_path = current_path.path_join(item_name)
 		if dir.current_is_dir():
-			_recursive_load_definitions(full_path)
+			# Pass the original base_load_path down to the recursive call.
+			_recursive_load_definitions(full_path, base_load_path)
 		elif item_name.ends_with(".json"):
-			var base_path_to_remove = Config.STATE_DEFINITION_PATH
-			if not base_path_to_remove.ends_with("/"):
-				base_path_to_remove += "/"
-			
-			var relative_path = full_path.replace(base_path_to_remove, "")
+			# Construct definition ID relative to the *original* base_load_path
+			var relative_path = full_path.replace(base_load_path, "").lstrip("/")
 			var definition_id = relative_path.trim_suffix(".json")
 
 			Debug.post("Attempting to load state definition: '%s' from path: %s" % [definition_id, full_path], "StateRegistry")
@@ -62,3 +63,4 @@ func _recursive_load_definitions(path: String) -> void:
 
 		item_name = dir.get_next()
 	dir.list_dir_end()
+# --- END OF FIX ---

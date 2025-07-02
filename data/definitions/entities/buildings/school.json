@@ -1,0 +1,32 @@
+{
+	"name": "School Building",
+	"base_node_type": "StaticBody3D",
+	"scale": { "x": 30, "y": 8, "z": 20 },
+	"components": {
+		"VisualComponent": { "shape": "box", "color": "#D2B48C" },
+		"TagComponent": { "tags": ["building", "school"] }
+	},
+	"connections": [
+		{
+			"id": "front_door",
+			"type": "exterior_adjacent",
+			"position": { "x": 0, "y": 0, "z": 10.5 },
+			"tags": ["main_entrance"]
+		},
+		{
+			"id": "main_hallway_slot",
+			"type": "interior",
+			"position": { "x": 0, "y": 1, "z": 0 }
+		},
+		{
+			"id": "west_wing_slot",
+			"type": "interior",
+			"position": { "x": -10, "y": 1, "z": -5 }
+		},
+		{
+			"id": "east_wing_slot",
+			"type": "interior",
+			"position": { "x": 10, "y": 1, "z": -5 }
+		}
+	]
+}

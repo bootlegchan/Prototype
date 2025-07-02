@@ -1,5 +1,7 @@
 {
+	"name": "Patrolling",
 	"description": "Walking a set route and looking for trouble.",
 	"interruptible": true,
+	"can_move": true,
 	"movement_speed_modifier": 1.0
 }
