@@ -1,145 +1,126 @@
 extends Node3D
 
 var player_id = "player_character"
-var merchant_instance_id_from_spawn: String = "" # To store the dynamically spawned merchant's ID
-var test_phase_complete = false # A flag to prevent the main test phases from running multiple times
+var initial_merchant_id = "test_merchant" # The merchant spawned from world_state.json
+
+# This flag ensures our test logic runs only once after initial setup.
+var setup_complete = false
 
 func _ready() -> void:
-	# Register the NavRegion with the NavigationManager as soon as the scene is ready.
+	Debug.post("Main scene ready. Starting Phase 1 Test.", "Main")
+
+	# 1. Register the NavRegion with the NavigationManager as soon as the scene is ready.
+	# This is a general setup step required for navigation features later.
 	var nav_region = get_node_or_null("NavRegion")
 	if is_instance_valid(nav_region):
 		NavigationManager.register_nav_region(nav_region)
 	else:
-		printerr("Main.gd: Could not find NavRegion child node!")
+		printerr("Main.gd: Could not find NavRegion child node! Navigation will not function.")
 
-	Debug.post("Main scene ready. Starting Grand Integration Test.", "Main")
-	
-	# Set time to just before the market opens to trigger the spawn list early.
-	TimeSystem.current_hour = 9
-	TimeSystem.current_minute = 58
-	# Set a very fast time scale for rapid testing.
-	if TimeSystem.has_method("_set_seconds_per_minute"): # Check for method existence
-		TimeSystem._set_seconds_per_minute(0.01) # Call via method if available
+	# 2. Set Time System for rapid testing.
+	# This ensures the test runs quickly, as TimeSystem affects scheduling and movement delays.
+	if TimeSystem.has_method("_set_seconds_per_minute"):
+		TimeSystem._set_seconds_per_minute(0.01)
 	else:
-		TimeSystem._seconds_per_minute = 0.01 # Direct access if method not present
+		TimeSystem._seconds_per_minute = 0.01
 
-	# Subscribe to entity_staged to detect when the scheduled merchant appears.
-	EventSystem.subscribe("entity_staged", Callable(self, "_on_entity_staged"))
-	Debug.post("Test is now waiting for the scheduler to spawn Silas Croft...", "Main")
+	# 3. Wait for all initial world_state entities to be staged.
+	# We rely on EntityManager to stage everything before we proceed.
+	# The EntityManager already calls bake_nav_mesh_after_staging() which is deferred.
+	# A small timer ensures all systems have processed their _ready/deferred calls.
+	await get_tree().create_timer(0.1).timeout # Wait for 0.1 seconds after all singletons are ready.
 
-
-func _on_entity_staged(payload: Dictionary) -> void:
-	var instance_id = payload.get("instance_id", "")
-	# --- THIS IS THE FIX ---
-	# Prefix the 'node' variable with an underscore as it's not directly used in this function's logic.
-	var _node = payload.get("node") # The actual spawned Node3D instance (now prefixed)
-	# --- END OF FIX ---
-
-	# The dynamically spawned merchant will have an instance ID like "silas_croft_dyn_X"
-	if instance_id.begins_with("silas_croft_dyn") and not test_phase_complete:
-		test_phase_complete = true # Prevent re-triggering the test phases
-		merchant_instance_id_from_spawn = instance_id
-		Debug.post("[TEST] The scheduled merchant '%s' has spawned." % merchant_instance_id_from_spawn, "Main")
-		
-		# All initial entities are staged, and the scheduled entity has appeared.
-		# Now we can start the core test phases.
-		call_deferred("run_all_test_phases")
+	Debug.post("Phase 1: Initial setup complete. Running Player Interaction & Persistence Test.", "Main")
+	run_phase_1_player_interaction_and_persistence()
 
 
-func run_all_test_phases() -> void:
-	if not test_phase_complete:
-		Debug.post("TEST FAILED: run_all_test_phases called prematurely.", "Main")
+func run_phase_1_player_interaction_and_persistence() -> void:
+	if setup_complete:
 		return
+	setup_complete = true
 
-	Debug.post("\n--- Starting Grand Integration Test Phases ---", "Main")
-
-	# Phase 1: Player buys an apple from the initially spawned merchant
-	var initial_merchant_id = "test_merchant" # This ID is from world_state.json
+	Debug.post("\n--- Phase 1: Player Interaction & Persistence Test ---", "Main")
+	
 	var player_inventory = EntityManager.get_entity_component(player_id, "InventoryComponent")
 	var initial_merchant_inventory = EntityManager.get_entity_component(initial_merchant_id, "InventoryComponent")
 	
-	if is_instance_valid(player_inventory) and is_instance_valid(initial_merchant_inventory):
-		Debug.post("\n[Phase 1: Player buys an apple from initial merchant]", "Main")
-		InventoryComponent.transfer_item(initial_merchant_inventory, player_inventory, "consumable/apple", 1)
-		EntityManager.add_tag_to_entity(player_id, "reputation/valued_customer")
-		Debug.post("Player attempted to buy apple. Player inventory count: %s" % player_inventory.get_item_count("consumable/apple"), "Main")
+	var pre_check_passed = true
+
+	if not is_instance_valid(player_inventory):
+		Debug.post("TEST FAILED (Phase 1): Player InventoryComponent not found.", "Main")
+		pre_check_passed = false
+	elif player_inventory.get_item_count("consumable/apple") != 0:
+		Debug.post("TEST FAILED (Phase 1): Player initial apple count incorrect. (Expected 0, Got %s)" % player_inventory.get_item_count("consumable/apple"), "Main")
+		pre_check_passed = false
 	else:
-		Debug.post("TEST FAILED (Phase 1): Could not find required inventories for initial merchant.", "Main")
-		call_deferred("verify_final_state") # Proceed to verification to log failure
+		Debug.post("Pre-check PASSED: Player initially has no apple.", "Main")
+
+	if not is_instance_valid(initial_merchant_inventory):
+		Debug.post("TEST FAILED (Phase 1): Initial Merchant InventoryComponent not found.", "Main")
+		pre_check_passed = false
+	elif initial_merchant_inventory.get_item_count("consumable/apple") != 1:
+		Debug.post("TEST FAILED (Phase 1): Initial merchant apple count incorrect. (Expected 1, Got %s)" % initial_merchant_inventory.get_item_count("consumable/apple"), "Main")
+		pre_check_passed = false
+	else:
+		Debug.post("Pre-check PASSED: Initial merchant has 1 apple.", "Main")
+
+	if not pre_check_passed:
+		verify_final_state_phase_1(false, false)
 		return
 
-	# Phase 2: Unstage and restage the player to test persistence
-	Debug.post("\n[Phase 2: Unstage and Restage Player]", "Main")
+	Debug.post("Attempting: Player buys 1 apple from initial merchant ('%s')." % initial_merchant_id, "Main")
+	InventoryComponent.transfer_item(initial_merchant_inventory, player_inventory, "consumable/apple", 1)
+	EntityManager.add_tag_to_entity(player_id, "reputation/valued_customer")
+	Debug.post("Interaction: Player attempted to buy apple. Player inventory now: %s" % player_inventory.get_item_count("consumable/apple"), "Main")
+
+	Debug.post("Attempting: Unstage and Restage Player ('%s') to test persistence." % player_id, "Main")
 	EntityManager.unstage_entity(player_id)
 	EntityManager.stage_entity(player_id)
-	Debug.post("Player unstaged and restaged.", "Main")
-
-	# Phase 3: Command the player to move to the destination marker
-	Debug.post("\n[Phase 3: Player Movement Test]", "Main")
-	var player_nav_comp = EntityManager.get_entity_component(player_id, "NavigationComponent")
-	var destination_marker_node = get_node_or_null("test_destination_marker")
 	
-	if is_instance_valid(player_nav_comp) and is_instance_valid(destination_marker_node):
-		Debug.post("Commanding player to move to destination marker at: %s" % destination_marker_node.global_position, "Main")
-		player_nav_comp.set_target_location(destination_marker_node.global_position)
-		
-		# Connect to the destination_reached signal to proceed to the next phase.
-		# Ensure we only connect once to prevent duplicate signal connections on multiple runs/re-stages.
-		if not player_nav_comp.destination_reached.is_connected(Callable(self, "_on_player_movement_complete")):
-			player_nav_comp.destination_reached.connect(Callable(self, "_on_player_movement_complete"))
-		if not player_nav_comp.pathfinding_failed.is_connected(Callable(self, "_on_player_movement_failed")):
-			player_nav_comp.pathfinding_failed.connect(Callable(self, "_on_player_movement_failed"))
-	else:
-		Debug.post("TEST FAILED (Phase 3): Could not find player NavigationComponent or destination marker.", "Main")
-		call_deferred("verify_final_state") # Proceed to verification to log failure
-		return
-
-func _on_player_movement_complete() -> void:
-	Debug.post("\n[Phase 3: Player movement complete!]", "Main")
-	# Disconnect signals to prevent them from firing multiple times if the player moves again.
-	var player_nav_comp = EntityManager.get_entity_component(player_id, "NavigationComponent")
-	if is_instance_valid(player_nav_comp):
-		if player_nav_comp.destination_reached.is_connected(Callable(self, "_on_player_movement_complete")):
-			player_nav_comp.destination_reached.disconnect(Callable(self, "_on_player_movement_complete"))
-		if player_nav_comp.pathfinding_failed.is_connected(Callable(self, "_on_player_movement_failed")):
-			player_nav_comp.pathfinding_failed.disconnect(Callable(self, "_on_player_movement_failed"))
-
-	# Proceed to final verification.
-	call_deferred("verify_final_state")
-
-func _on_player_movement_failed() -> void:
-	Debug.post("\n[Phase 3: Player movement FAILED!]", "Main")
-	# Disconnect signals.
-	var player_nav_comp = EntityManager.get_entity_component(player_id, "NavigationComponent")
-	if is_instance_valid(player_nav_comp):
-		if player_nav_comp.destination_reached.is_connected(Callable(self, "_on_player_movement_complete")):
-			player_nav_comp.destination_reached.disconnect(Callable(self, "_on_player_movement_complete"))
-		if player_nav_comp.pathfinding_failed.is_connected(Callable(self, "_on_player_movement_failed")):
-			player_nav_comp.pathfinding_failed.disconnect(Callable(self, "_on_player_movement_failed"))
-			
-	# Proceed to final verification, indicating failure.
-	call_deferred("verify_final_state")
-
-
-func verify_final_state() -> void:
-	Debug.post("\n--- Running Final Verification Phase ---", "Main")
-	var player_inventory = EntityManager.get_entity_component(player_id, "InventoryComponent")
+	await get_tree().create_timer(0.1).timeout
+	player_inventory = EntityManager.get_entity_component(player_id, "InventoryComponent")
 	var player_tags = EntityManager.get_entity_component(player_id, "TagComponent")
-	
-	var inventory_ok = player_inventory and player_inventory.get_item_count("consumable/apple") == 1
-	var tag_ok = player_tags and player_tags.has_tag("reputation/valued_customer")
+
+	var inventory_persisted_ok = false
+	if is_instance_valid(player_inventory):
+		inventory_persisted_ok = player_inventory.get_item_count("consumable/apple") == 1
+	else:
+		Debug.post("VERIFICATION FAILED (Phase 1): Player InventoryComponent NOT valid after restage.", "Main")
+		
+	var tag_persisted_ok = false
+	if is_instance_valid(player_tags):
+		tag_persisted_ok = player_tags.has_tag("reputation/valued_customer")
+	else:
+		Debug.post("VERIFICATION FAILED (Phase 1): Player TagComponent NOT valid after restage.", "Main")
+
+	verify_final_state_phase_1(inventory_persisted_ok, tag_persisted_ok)
+
+
+func verify_final_state_phase_1(inventory_ok: bool, tag_ok: bool) -> void:
+	Debug.post("\n--- Phase 1: Final Verification ---", "Main")
 	
 	if inventory_ok:
-		Debug.post("VERIFICATION PASSED: Player's inventory correctly contains 1 apple.", "Main")
+		Debug.post("VERIFICATION PASSED: Player's inventory correctly persists 1 apple.", "Main")
 	else:
-		Debug.post("VERIFICATION FAILED: Player's inventory state was not preserved.", "Main")
+		var current_apple_count = "N/A"
+		var current_player_inventory_comp = EntityManager.get_entity_component(player_id, "InventoryComponent")
+		if is_instance_valid(current_player_inventory_comp):
+			current_apple_count = str(current_player_inventory_comp.get_item_count("consumable/apple"))
+		Debug.post("VERIFICATION FAILED: Player's inventory state was NOT preserved. (Expected 1, Got %s)" % current_apple_count, "Main")
 		
 	if tag_ok:
-		Debug.post("VERIFICATION PASSED: Player correctly has the 'valued_customer' tag.", "Main")
+		Debug.post("VERIFICATION PASSED: Player correctly persists 'valued_customer' tag.", "Main")
 	else:
-		Debug.post("VERIFICATION FAILED: Player's dynamic tag was not preserved.", "Main")
+		var current_player_tags_comp = EntityManager.get_entity_component(player_id, "TagComponent")
+		var current_tags_str = "N/A"
+		if is_instance_valid(current_player_tags_comp):
+			current_tags_str = str(current_player_tags_comp.tags.keys())
+		Debug.post("VERIFICATION FAILED: Player's dynamic tag was NOT preserved. (Expected 'valued_customer', Has %s)" % current_tags_str, "Main")
 		
 	if inventory_ok and tag_ok:
-		Debug.post("\n--- Grand Integration Test Complete: SUCCESS ---", "Main")
+		Debug.post("\n--- Phase 1 Test Complete: SUCCESS ---", "Main")
 	else:
-		Debug.post("\n--- Grand Integration Test Complete: FAILURE ---", "Main")
+		Debug.post("\n--- Phase 1 Test Complete: FAILURE ---", "Main")
+
+	# For now, end the test here. In subsequent steps, we'll chain to Phase 2.
+	# get_tree().quit() # Uncomment to quit automatically after this phase.
