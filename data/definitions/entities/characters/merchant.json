@@ -1,6 +1,7 @@
 {
 	"name": "Wandering Merchant",
 	"base_node_type": "CharacterBody3D",
+	"scale": { "x": 1, "y": 2, "z": 1 },
 	"components": {
 		"VisualComponent": { "shape": "capsule", "color": "#00FF00" },
 		"StateComponent": { "initial_state": "common/idle" },

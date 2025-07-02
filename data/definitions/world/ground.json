@@ -1,6 +1,9 @@
 {
-	"name": "Ground Plane",
+	"name": "World Ground",
 	"base_node_type": "StaticBody3D",
-	"scene": "res://scenes/entities/ground.tscn"
-
+	"components": {
+		"VisualComponent": {
+			"asset_path": "res://assets/world/ground.tscn"
+		}
+	}
 }

@@ -1,49 +1,34 @@
-# script/components/BaseComponent.gd
 class_name BaseComponent
 extends Node
 
 var _entity_name: String = "Unnamed"
 var _entity_logic_node: Node = null
+var _entity_root: Node3D = null # This will hold the reference to the main 3D node.
 
-## This is the standard initialization function for all components.
-## It is called by the EntityFactory when an entity is created.
-## It stores references to the entity's name and its logic node for later use.
-func initialize(data: Dictionary, entity_logic_node: Node) -> void:
-	_entity_logic_node = entity_logic_node
-	if is_instance_valid(entity_logic_node) and is_instance_valid(entity_logic_node.get_parent()):
-		_entity_name = entity_logic_node.get_parent().name
+# --- THIS IS THE FIX ---
+# The initialize function now takes the entity's root node directly.
+func initialize(data: Dictionary, entity_root: Node3D, entity_logic_node: Node) -> void:
+	self._entity_root = entity_root
+	self._entity_logic_node = entity_logic_node
+	if is_instance_valid(entity_root):
+		_entity_name = entity_root.name
+# --- END OF FIX ---
 	
-	# Call the specific setup logic for the child component.
 	_load_data(data)
-	
-	# --- THIS IS THE CHANGE ---
-	# Call the post-initialization logic, which happens after all
-	# components for this entity have been loaded and added to the BaseEntity.
 	_post_initialize()
-	# --- END OF CHANGE ---
 
 
 ## This is a "virtual" function intended to be overridden by child components.
-## Each component that needs to load data from its definition or a save file
-## will implement its specific logic here.
 func _load_data(data: Dictionary) -> void:
-	# Base implementation does nothing.
 	pass
 
 
-# --- THIS IS THE NEW FUNCTION ---
 ## This is a "virtual" function intended to be overridden by child components.
-## It is called after all components for the entity have been initialized via _load_data.
-## This is the safe place to get references to sibling components.
 func _post_initialize() -> void:
-	# Base implementation does nothing.
 	pass
-# --- END OF NEW FUNCTION ---
 
 
 ## This is a "virtual" function for persistence.
-## Any component that needs to save its state must override this method.
-## By default, a component saves nothing.
 func get_persistent_data() -> Dictionary:
 	return {}
 

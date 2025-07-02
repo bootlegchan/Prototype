@@ -5,6 +5,16 @@ var merchant_id = ""
 var test_phase_complete = false # A flag to prevent the test from running multiple times
 
 func _ready() -> void:
+	# --- THIS IS THE FIX ---
+	# Get the NavRegion node and register it with the manager.
+	# This must be done BEFORE anything tries to use the nav system.
+	var nav_region = get_node_or_null("NavRegion")
+	if is_instance_valid(nav_region):
+		NavigationManager.register_nav_region(nav_region)
+	else:
+		printerr("Main.gd: Could not find NavRegion child node!")
+	# --- END OF FIX ---
+
 	print("Main scene ready. Starting Grand Integration Test.")
 	
 	# Set time to just before the market opens.
@@ -32,7 +42,6 @@ func _on_entity_staged(payload: Dictionary) -> void:
 		merchant_id = instance_id
 		print("[TEST] The expected merchant has spawned with ID: '%s'" % merchant_id)
 		
-		# --- THIS IS THE FIX ---
 		# Now that we know the merchant exists, proceed to the next phase of the test.
 		# Use call_deferred to ensure we don't do this in the middle of the event signal.
 		call_deferred("run_interaction_phase")

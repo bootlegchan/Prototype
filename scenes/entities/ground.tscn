@@ -1,19 +1,13 @@
-[gd_scene load_steps=3 format=3 uid="uid://cck2e2l6p200a"]
+[gd_scene load_steps=3 format=3 uid="uid://cyaarw7d0vjbo"]
 
-[ext_resource type="Script" path="res://script/entities/Ground.gd" id="1_4n55s"]
+[sub_resource type="PlaneMesh" id="PlaneMesh_b1w1g"]
+size = Vector2(500, 500)
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_5w5wg"]
-albedo_color = Color(0.3, 0.5, 0.3, 1) # A simple green/grey color
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_c626u"]
+albedo_color = Color(0.490196, 0.580392, 0.321569, 1)
 
-[sub_resource type="BoxMesh" id="BoxMesh_i7y5g"]
-material = SubResource("StandardMaterial3D_5w5wg")
-size = Vector3(100, 0.2, 100)
-
-[node name="Ground" type="StaticBody3D"]
-script = ExtResource("1_4n55s")
+[node name="Ground" type="Node3D"]
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="."]
-mesh = SubResource("BoxMesh_i7y5g")
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
-shape = SubResource("BoxMesh_i7y5g")
+mesh = SubResource("PlaneMesh_b1w1g")
+surface_material_override/0 = SubResource("StandardMaterial3D_c626u")

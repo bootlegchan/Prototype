@@ -13,6 +13,7 @@
 				"thursday":  { "10:00": { "state": "market/open" }, "18:00": { "state": "market/closed" } },
 				"friday":    { "10:00": { "state": "market/open" }, "18:00": { "state": "market/closed" } }
 			}
-		}
+		},
+		"TagComponent": {}
 	}
 }

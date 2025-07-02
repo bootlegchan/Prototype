@@ -1,4 +1,3 @@
-# script/singletons/EntityManager.gd
 extends Node
 
 var _entity_registry: Dictionary = {}
@@ -7,24 +6,20 @@ var _next_uid: int = 0
 
 func _ready() -> void:
 	load_world_state()
-	# --- THIS IS THE CHANGE ---
 	print("EntityManager: Calling deferred bake_nav_mesh_after_staging.")
 	call_deferred("bake_nav_mesh_after_staging")
-	# --- END OF CHANGE ---
 
 
 func bake_nav_mesh_after_staging() -> void:
 	print("EntityManager: bake_nav_mesh_after_staging called.")
-	# --- THIS IS THE CHANGE ---
-	# Access NavigationManager using get_node() to be safe.
 	var nav_manager = get_node_or_null("/root/NavigationManager")
 	if is_instance_valid(nav_manager):
 		print("EntityManager: Triggering NavigationManager bake NavMesh.")
-		nav_manager.bake_nav_mesh_from_group("walkable_geometry") # Call method on instance
+		# The group name tells our system which entities should be considered for navigation.
+		nav_manager.bake_nav_mesh_from_group("walkable_geometry")
 		print("EntityManager: Requested NavigationManager to bake NavMesh.")
 	else:
 		printerr("EntityManager: NavigationManager not available for baking after staging.")
-	# --- END OF CHANGE ---
 
 
 func load_world_state() -> void:
@@ -114,22 +109,21 @@ func stage_entity(instance_id: String) -> void:
 	if logic_node.has_component("ScheduleComponent"): root_node.add_to_group("has_schedule")
 
 	# --- THIS IS THE CHANGE ---
-	# Check if the staged entity is the ground, and if so, call its registration method.
-	if root_node.get_script() == load("res://script/entities/Ground.gd"):
-		var nav_manager = get_node_or_null("/root/NavigationManager")
-		if is_instance_valid(nav_manager):
-			# Pass the NavigationManager instance to the ground's registration method.
-			if root_node.has_method("register_mesh_with_navigation"):
-				root_node.register_mesh_with_navigation(nav_manager)
-				print("EntityManager: Called register_mesh_with_navigation on Ground.")
-			else:
-				printerr("EntityManager: Ground node script does not have register_mesh_with_navigation method.")
+	# Decide where to parent the new entity. Static geometry goes into the NavRegion
+	# to be included in the navmesh bake. All other entities go to the scene root.
+	var parent_node = get_tree().current_scene
+	if root_node is StaticBody3D:
+		root_node.add_to_group("walkable_geometry") # Add to group for identification
+		var nav_region = get_tree().current_scene.get_node_or_null("NavRegion")
+		if is_instance_valid(nav_region):
+			parent_node = nav_region
+			print("EntityManager: Parenting static entity '%s' to NavRegion." % instance_id)
 		else:
-			printerr("EntityManager: NavigationManager singleton not available when staging ground.")
+			push_warning("EntityManager: 'NavRegion' not found. Cannot parent '%s' for navmesh baking." % instance_id)
+	
+	parent_node.add_child(root_node)
 	# --- END OF CHANGE ---
 
-
-	get_tree().current_scene.add_child(root_node)
 	if is_instance_valid(root_node):
 		print("EntityManager: Staged entity '%s'. Root node valid: %s, Parent: %s, Global Position: %s" % [instance_id, is_instance_valid(root_node), root_node.get_parent(), root_node.global_position])
 	else:
@@ -154,10 +148,8 @@ func unstage_entity(instance_id: String) -> void:
 	if not is_instance_valid(entity_node): return
 	if entity_node.is_in_group("has_schedule"):
 		entity_node.remove_from_group("has_schedule")
-
-	# We no longer manually clean up navigation regions here.
-	# The NavigationManager handles cleanup when the game closes.
-
+	if entity_node.is_in_group("walkable_geometry"):
+		entity_node.remove_from_group("walkable_geometry")
 
 	var entity_data = _entity_registry[instance_id]
 	if entity_node is Node3D:
